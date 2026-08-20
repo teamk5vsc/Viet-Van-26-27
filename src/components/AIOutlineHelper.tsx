@@ -348,7 +348,7 @@ function getClientMockEssay(topic: string, type: string, format: 'essay' | 'para
   return genreEntry[format] || genreEntry['essay'];
 }
 
-function parseMockOutlineItem(item: string, genre: string): { point: string; detail: string; sample: string } {
+function parseMockOutlineItem(item: string, genre: string, topic: string = ''): { point: string; detail: string; sample: string } {
   let point = item;
   let detail = '';
   let sample = '';
@@ -363,60 +363,130 @@ function parseMockOutlineItem(item: string, genre: string): { point: string; det
   // Clean punctuation from point
   point = point.replace(/[.!?:]$/, '').trim();
   
-  // Add appropriate mock sample sentence based on genre
-  const genreLower = (genre || '').toLowerCase();
-  if (genreLower.includes('cảnh')) {
+  const topicLower = topic.toLowerCase();
+  
+  // Check for specific stories/topics first to give highly relevant mock samples (2018 curriculum)
+  if (topicLower.includes('thanh âm của gió')) {
     if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
-      sample = 'Mỗi buổi sáng, khi ông mặt trời thức giấc kéo màn sương mỏng lên, khu vườn nhỏ nhà em lại hiện lên lung linh, đẹp như một bức tranh cổ tích.';
-    } else if (point.includes('bao quát')) {
-      sample = 'Từ trên cao nhìn xuống, toàn bộ cảnh vật như được khoác lên mình chiếc áo mới tươi non, bầu không khí mát lành làm lòng người khoan khoái.';
+      sample = 'Ở thung lũng nọ, nơi có đồng cỏ xanh mướt và những con gió mát lành thổi qua, câu chuyện về tình bạn ngọt ngào của thỏ con, cừu con đã gieo vào lòng em những thanh âm thật êm đềm.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Những buổi chiều lộng gió, các bạn nhỏ lại cùng nhau nằm trên cỏ xanh, lắng nghe tiếng gió rì rào hát ca như bản nhạc hòa tấu của đất trời.';
+    } else if (point.includes('chi tiết') || point.includes('sự vật') || point.includes('chuẩn bị') || point.includes('phân công')) {
+      sample = 'Mỗi buổi sáng, thỏ con lại chạy lon ton trên con đường mòn, còn cừu con thì chăm chỉ gặm những ngọn cỏ non tơ còn đọng sương mai.';
+    } else if (point.includes('âm thanh') || point.includes('diễn biến') || point.includes('hành động') || point.includes('tiến trình')) {
+      sample = 'Nghe tiếng gió rít qua khe đá, thỏ con chợt nhận ra rằng gió cũng đang trò chuyện và hát ca cùng muôn loài.';
+    } else {
+      sample = 'Câu chuyện giúp em hiểu rằng thiên nhiên quanh ta luôn tràn ngập những thanh âm kỳ diệu nếu chúng ta biết lắng nghe bằng cả trái tim yêu thương.';
+    }
+  } else if (topicLower.includes('cánh đồng hoa')) {
+    if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+      sample = 'Nhìn bãi đất trống xám xịt ngày nào giờ đã biến thành một cánh đồng hoa rực rỡ sắc màu, em mới thấu hiểu sức mạnh của sự chung tay đoàn kết.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Mỗi người một tay, bạn xới đất, bạn gieo hạt, chẳng mấy chốc những mầm xanh đầu tiên đã vươn mình đón nắng mai ấm áp.';
+    } else if (point.includes('chi tiết') || point.includes('sự vật') || point.includes('chuẩn bị') || point.includes('phân công')) {
+      sample = 'Các bạn nhỏ cùng nhau tưới nước, che chắn gió cho từng nhành hoa bé nhỏ vừa mới hé mở dưới ánh bình minh.';
+    } else if (point.includes('âm thanh') || point.includes('diễn biến') || point.includes('hành động') || point.includes('tiến trình')) {
+      sample = 'Tiếng cười đùa giòn giã của các bạn hòa cùng hương hoa thơm ngát lan tỏa khắp xóm nhỏ, xua đi vẻ ảm đạm ngày xưa.';
+    } else {
+      sample = 'Cánh đồng hoa ấy không chỉ làm đẹp thêm xóm nhỏ mà còn nở hoa trong lòng mỗi chúng em về tình bạn và tinh thần tập thể.';
+    }
+  } else if (topicLower.includes('rùa và thỏ')) {
+    if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+      sample = 'Trong khu rừng xanh mát, câu chuyện chạy đua huyền thoại giữa chú Rùa kiên trì và chú Thỏ kiêu ngạo luôn để lại bài học sâu sắc cho học sinh chúng em.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Dù biết mình chậm chạp, Rùa ta vẫn từng bước, từng bước một kiên trì tiến về phía trước trong khi Thỏ mải mê đuổi bướm hái hoa rồi ngủ quên dưới gốc cây.';
+    } else if (point.includes('chi tiết') || point.includes('sự vật') || point.includes('chuẩn bị') || point.includes('phân công')) {
+      sample = 'Thỏ ta đắc chí cậy chân dài, nằm dài trên thảm cỏ xanh mượt mà vừa ngáy khò khò với vẻ đầy coi thường.';
+    } else if (point.includes('âm thanh') || point.includes('diễn biến') || point.includes('hành động') || point.includes('tiến trình')) {
+      sample = 'Khi Thỏ giật mình tỉnh giấc, chú đã thấy Rùa kiên cường chạm tay vào vạch đích giữa tiếng reo hò cổ vũ vang dội của muôn thú.';
+    } else {
+      sample = 'Chiến thắng xứng đáng của Rùa đã dạy cho em bài học quý báu: Kiên trì, không kiêu ngạo mới là chìa khóa dẫn đến thành công.';
+    }
+  } else if (topicLower.includes('sơn đoòng') || topicLower.includes('hang sơn đoòng')) {
+    if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+      sample = 'Nằm sâu trong lòng quần thể di sản Phong Nha - Kẻ Bàng, hang Sơn Đoòng hiện lên như một kỳ quan thiên nhiên vĩ đại khiến cả thế giới phải kinh ngạc.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Đi sâu vào hang, em như lạc vào một thế giới cổ tích với những khối thạch nhũ khổng lồ nghìn năm tuổi và một cánh rừng nguyên sinh xanh mướt ngay dưới lòng đất.';
     } else if (point.includes('chi tiết') || point.includes('sự vật')) {
-      sample = 'Những đóa hồng nhung đỏ thắm kiêu hãnh đọng những giọt sương mai lấp lánh như những hạt ngọc, hương thơm dịu nhẹ lan tỏa khắp không gian.';
-    } else if (point.includes('âm thanh') || point.includes('hoạt động')) {
-      sample = 'Tiếng chim hót líu lo trên cành khế ngọt hòa cùng tiếng lá cây rì rào trong gió nhẹ tạo nên một bản nhạc xôn xao của ngày mới.';
+      sample = 'Những dòng sông ngầm trong vắt chảy rầm rì qua những vòm hang cao rộng thênh thang, nơi ánh nắng mặt trời lọt qua những hố sụt khổng lồ.';
     } else {
-      sample = 'Đứng trước cảnh sắc tươi đẹp ấy, em thầm hứa sẽ luôn chăm sóc khu vườn để nơi đây mãi giữ được vẻ đẹp thanh bình này.';
+      sample = 'Sự kỳ vĩ của Sơn Đoòng khơi dậy trong lòng em niềm tự hào sâu sắc về giang sơn gấm vóc Việt Nam và ý thức bảo vệ di sản quê hương.';
     }
-  } else if (genreLower.includes('chuyện')) {
+  } else if (topicLower.includes('rừng xanh') || topicLower.includes('kì diệu rừng xanh')) {
     if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
-      sample = 'Trong khu rừng nọ, nơi những bóng cây cổ thụ che rợp một góc trời, có một chú thỏ con vô cùng dũng cảm và ham học hỏi tên là Bông.';
-    } else if (point.includes('tình huống') || point.includes('bắt đầu')) {
-      sample = 'Một hôm, khi đang dạo chơi bên bờ suối, thỏ Bông chợt nghe thấy tiếng kêu cứu yếu ớt phát ra từ sâu trong hang đá tối om.';
-    } else if (point.includes('diễn biến') || point.includes('hành động')) {
-      sample = 'Không một chút do dự, chú thỏ nhỏ liền bật nhảy qua các phiến đá trơn trượt, tiến về phía tiếng kêu để tìm cách giúp đỡ.';
-    } else if (point.includes('cao trào')) {
-      sample = 'Đột nhiên, một bóng đen to lớn xuất hiện chắn lối, thỏ Bông lấy hết can đảm dùng trí thông minh để đánh lạc hướng kẻ địch.';
+      sample = 'Mỗi lần đọc bài "Kì diệu rừng xanh", em lại mơ thấy mình được bước chân vào một vương quốc nấm lút xúp dưới những tán cây cổ thụ mát rượi.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Những chiếc nấm rừng như những tòa lâu đài thu nhỏ của những chú lùn, còn muông thú thì náo nức chuyền cành dưới nắng thu vàng óng.';
+    } else if (point.includes('chi tiết') || point.includes('sự vật')) {
+      sample = 'Một con mang vàng hực như múi mít đang nhón chân trên thảm lá khô, ngơ ngác nhìn em như muốn gửi lời chào thân thiện.';
     } else {
-      sample = 'Chuyến phiêu lưu đáng nhớ ấy đã dạy cho thỏ Bông bài học quý giá về lòng dũng cảm và tinh thần tương thân tương ái.';
+      sample = 'Cảnh rừng khộp kỳ diệu ấy khiến em thêm yêu mến thiên nhiên hoang dã và tự hứa sẽ luôn bảo vệ màu xanh của Trái Đất.';
     }
-  } else if (genreLower.includes('nhân vật') || genreLower.includes('tình cảm')) {
+  } else if (topicLower.includes('hạ long') || topicLower.includes('vịnh hạ long')) {
     if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
-      sample = 'Trong số các tác phẩm văn học đã học, hình ảnh nhân vật Dế Mèn trong truyện "Dế Mèn phiêu lưu ký" để lại trong em ấn tượng sâu sắc nhất.';
-    } else if (point.includes('ngoại hình') || point.includes('hành động')) {
-      sample = 'Với đôi càng mẫm bóng, những cái vuốt ở chân cứng ngắc và nhọn hoắt, Dế Mèn hiện lên thật oai vệ nhưng cũng đầy vẻ tự phụ.';
-    } else if (point.includes('tính cách') || point.includes('phẩm chất')) {
-      sample = 'Dù từng kiêu ngạo gây ra cái chết thương tâm cho Dế Choắt, hành động hối hận và giọt nước mắt của Mèn cho thấy chú có một trái tim biết hướng thiện.';
+      sample = 'Vịnh Hạ Long hiện lên trước mắt em như một bức tranh thủy mặc khổng lồ với hàng ngàn hòn đảo đá nhấp nhô trên làn nước xanh lục bảo.';
+    } else if (point.includes('bao quát') || point.includes('mở đầu')) {
+      sample = 'Những hòn đảo mang đủ hình thù ngộ nghĩnh, lúc thì như chú gà chọi đứng chênh vênh, lúc lại giống chiếc đỉnh hương khổng lồ giữa biển khơi.';
+    } else if (point.includes('chi tiết') || point.includes('sự vật')) {
+      sample = 'Khi màn đêm buông xuống, vịnh Hạ Long lung linh huyền ảo dưới ánh trăng với những ánh đèn lấp lánh phát ra từ những con tàu du lịch.';
     } else {
-      sample = 'Nhân vật Dế Mèn đã để lại cho em bài học đắt giá rằng sự kiêu ngạo ngông cuồng có thể gây hại cho người khác và cho chính mình.';
-    }
-  } else if (genreLower.includes('ý kiến') || genreLower.includes('lập trường')) {
-    if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
-      sample = 'Theo em, việc hình thành thói quen đọc sách mỗi ngày là vô cùng cần thiết đối với mỗi học sinh chúng ta.';
-    } else if (point.includes('lý lẽ') || point.includes('dẫn chứng')) {
-      sample = 'Đọc sách không chỉ giúp chúng ta mở rộng chân trời tri thức về thế giới xung quanh mà còn bồi đắp tâm hồn, giúp ta biết yêu thương và chia sẻ.';
-    } else if (point.includes('phản đối') || point.includes('mặt trái')) {
-      sample = 'Trái lại, việc quá phụ thuộc vào các thiết bị điện tử sẽ làm giảm khả năng tập trung và hạn chế trí tưởng tượng phong phú của học sinh.';
-    } else {
-      sample = 'Vì những lợi ích to lớn ấy, mỗi chúng ta hãy cùng nhau xây dựng văn hóa đọc, bắt đầu từ những trang sách nhỏ mỗi ngày.';
+      sample = 'Được ngắm nhìn kỳ quan thiên nhiên ấy, em thêm tự hào về đất nước mình và mong ước Hạ Long mãi giữ được vẻ đẹp nguyên sơ.';
     }
   } else {
-    // Default fallback sample
-    if (point.includes('Mở bài') || point.includes('Giới thiệu')) {
-      sample = 'Mỗi khi nghĩ về điều này, trong lòng em lại trào dâng những cảm xúc thật đặc biệt và khó tả.';
-    } else if (point.includes('Kết bài') || point.includes('tình cảm')) {
-      sample = 'Những kỷ niệm đẹp đẽ ấy sẽ mãi là hành trang quý giá theo em suốt chặng đường đời phía trước.';
+    // Default fallback sample based on genre
+    const genreLower = (genre || '').toLowerCase();
+    if (genreLower.includes('cảnh')) {
+      if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+        sample = 'Mỗi buổi sáng, khi ông mặt trời thức giấc kéo màn sương mỏng lên, khu vườn nhỏ nhà em lại hiện lên lung linh, đẹp như một bức tranh cổ tích.';
+      } else if (point.includes('bao quát')) {
+        sample = 'Từ trên cao nhìn xuống, toàn bộ cảnh vật như được khoác lên mình chiếc áo mới tươi non, bầu không khí mát lành làm lòng người khoan khoái.';
+      } else if (point.includes('chi tiết') || point.includes('sự vật')) {
+        sample = 'Những đóa hồng nhung đỏ thắm kiêu hãnh đọng những giọt sương mai lấp lánh như những hạt ngọc, hương thơm dịu nhẹ lan tỏa khắp không gian.';
+      } else if (point.includes('âm thanh') || point.includes('hoạt động')) {
+        sample = 'Tiếng chim hót líu lo trên cành khế ngọt hòa cùng tiếng lá cây rì rào trong gió nhẹ tạo nên một bản nhạc xôn xao của ngày mới.';
+      } else {
+        sample = 'Đứng trước cảnh sắc tươi đẹp ấy, em thầm hứa sẽ luôn chăm sóc khu vườn để nơi đây mãi giữ được vẻ đẹp thanh bình này.';
+      }
+    } else if (genreLower.includes('chuyện')) {
+      if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+        sample = 'Trong khu rừng nọ, nơi những bóng cây cổ thụ che rợp một góc trời, có một chú thỏ con vô cùng dũng cảm và ham học hỏi tên là Bông.';
+      } else if (point.includes('tình huống') || point.includes('bắt đầu')) {
+        sample = 'Một hôm, khi đang dạo chơi bên bờ suối, thỏ Bông chợt nghe thấy tiếng kêu cứu yếu ớt phát ra từ sâu trong hang đá tối om.';
+      } else if (point.includes('diễn biến') || point.includes('hành động')) {
+        sample = 'Không một chút do dự, chú thỏ nhỏ liền bật nhảy qua các phiến đá trơn trượt, tiến về phía tiếng kêu để tìm cách giúp đỡ.';
+      } else if (point.includes('cao trào')) {
+        sample = 'Đột nhiên, một bóng đen to lớn xuất hiện chắn lối, thỏ Bông lấy hết can đảm dùng trí thông minh để đánh lạc hướng kẻ địch.';
+      } else {
+        sample = 'Chuyến phiêu lưu đáng nhớ ấy đã dạy cho thỏ Bông bài học quý giá về lòng dũng cảm và tinh thần tương thân tương ái.';
+      }
+    } else if (genreLower.includes('nhân vật') || genreLower.includes('tình cảm')) {
+      if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+        sample = 'Trong số các tác phẩm văn học đã học, hình ảnh nhân vật Dế Mèn trong truyện "Dế Mèn phiêu lưu ký" để lại trong em ấn tượng sâu sắc nhất.';
+      } else if (point.includes('ngoại hình') || point.includes('hành động')) {
+        sample = 'Với đôi càng mẫm bóng, những cái vuốt ở chân cứng ngắc và nhọn hoắt, Dế Mèn hiện lên thật oai vệ nhưng cũng đầy vẻ tự phụ.';
+      } else if (point.includes('tính cách') || point.includes('phẩm chất')) {
+        sample = 'Dù từng kiêu ngạo gây ra cái chết thương tâm cho Dế Choắt, hành động hối hận và giọt nước mắt của Mèn cho thấy chú có một trái tim biết hướng thiện.';
+      } else {
+        sample = 'Nhân vật Dế Mèn đã để lại cho em bài học đắt giá rằng sự kiêu ngạo ngông cuồng có thể gây hại cho người khác và cho chính mình.';
+      }
+    } else if (genreLower.includes('ý kiến') || genreLower.includes('lập trường')) {
+      if (point.includes('Giới thiệu') || point.includes('Mở bài')) {
+        sample = 'Theo em, việc hình thành thói quen đọc sách mỗi ngày là vô cùng cần thiết đối với mỗi học sinh chúng ta.';
+      } else if (point.includes('lý lẽ') || point.includes('dẫn chứng')) {
+        sample = 'Đọc sách không chỉ giúp chúng ta mở rộng chân trời tri thức về thế giới xung quanh mà còn bồi đắp tâm hồn, giúp ta biết yêu thương và chia sẻ.';
+      } else if (point.includes('phản đối') || point.includes('mặt trái')) {
+        sample = 'Trái lại, việc quá phụ thuộc vào các thiết bị điện tử sẽ làm giảm khả năng tập trung và hạn chế trí tưởng tượng phong phú của học sinh.';
+      } else {
+        sample = 'Vì những lợi ích to lớn ấy, mỗi chúng ta hãy cùng nhau xây dựng văn hóa đọc, bắt đầu từ những trang sách nhỏ mỗi ngày.';
+      }
     } else {
-      sample = 'Từng chi tiết hiện lên chân thực như một thước phim quay chậm, gợi nhắc những bài học sâu sắc về cuộc sống.';
+      if (point.includes('Mở bài') || point.includes('Giới thiệu')) {
+        sample = 'Mỗi khi nghĩ về điều này, trong lòng em lại trào dâng những cảm xúc thật đặc biệt và khó tả.';
+      } else if (point.includes('Kết bài') || point.includes('tình cảm')) {
+        sample = 'Những kỷ niệm đẹp đẽ ấy sẽ mãi là hành trang quý giá theo em suốt chặng đường đời phía trước.';
+      } else {
+        sample = 'Từng chi tiết hiện lên chân thực như một thước phim quay chậm, gợi nhắc những bài học sâu sắc về cuộc sống.';
+      }
     }
   }
 
@@ -772,9 +842,10 @@ function getClientMockOutline(topic: string, type: string) {
   return {
     ...result,
     outline: {
-      mobi: result.outline.mobi.map(item => parseMockOutlineItem(item, result.genre)),
-      thanbi: result.outline.thanbi.map(item => parseMockOutlineItem(item, result.genre)),
-      ketbi: result.outline.ketbi.map(item => parseMockOutlineItem(item, result.genre))
+      mobi: result.outline.mobi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic)),
+      thanbi: result.outline.thanbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic)),
+      ketbi: result.outline.ketbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic))
+
     }
   };
 }
