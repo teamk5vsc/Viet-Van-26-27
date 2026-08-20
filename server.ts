@@ -234,24 +234,6 @@ function parseMockOutlineItem(item: string, genre: string, topic: string = ''): 
     detail: detail || 'Viết chi tiết, rõ ràng và sử dụng các từ ngữ gợi tả biểu cảm.',
     sample
   };
-} sample = 'Vì những lợi ích to lớn ấy, mỗi chúng ta hãy cùng nhau xây dựng văn hóa đọc, bắt đầu từ những trang sách nhỏ mỗi ngày.';
-    }
-  } else {
-    // Default fallback sample
-    if (point.includes('Mở bài') || point.includes('Giới thiệu')) {
-      sample = 'Mỗi khi nghĩ về điều này, trong lòng em lại trào dâng những cảm xúc thật đặc biệt và khó tả.';
-    } else if (point.includes('Kết bài') || point.includes('tình cảm')) {
-      sample = 'Những kỷ niệm đẹp đẽ ấy sẽ mãi là hành trang quý giá theo em suốt chặng đường đời phía trước.';
-    } else {
-      sample = 'Từng chi tiết hiện lên chân thực như một thước phim quay chậm, gợi nhắc những bài học sâu sắc về cuộc sống.';
-    }
-  }
-
-  return {
-    point,
-    detail: detail || 'Viết chi tiết, rõ ràng và sử dụng các từ ngữ gợi tả biểu cảm.',
-    sample
-  };
 }
 
 // Simulated data helpers for offline fallback so the application is instantly functional
