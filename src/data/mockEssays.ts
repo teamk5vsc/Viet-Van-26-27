@@ -9,110 +9,158 @@ export function getDynamicMockEssay(
   const topicLower = cleanTopic.toLowerCase();
   const isParagraph = format === 'paragraph';
 
+  // Helper to get random item from array (provides variety on rewrite)
+  const getRandomOption = (options: SampleEssayResult[]): SampleEssayResult => {
+    const randomIndex = Math.floor(Math.random() * options.length);
+    return options[randomIndex];
+  };
+
   // -------------------------------------------------------------
   // 1. KỂ CHUYỆN SÁNG TẠO (ke-chuyen-sang-tao)
   // -------------------------------------------------------------
   if (type === 'ke-chuyen-sang-tao') {
     if (topicLower.includes('cánh đồng hoa')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Chiều hôm ấy, khi hoàng hôn nhuộm hồng thung lũng, tôi đứng lặng người nhìn ngắm cánh đồng hoa hướng dương lung linh khoe sắc mà lòng trào dâng niềm tự hào khôn tả. Mới ngày nào nơi đây còn là một bãi đất trống hoang tàn, đầy rác rưởi xám xịt do mọi người vô ý thức xả ra. Nhưng bằng tình yêu quê hương và sức lao động bền bỉ, nhóm bạn nhỏ chúng tôi đã rủ nhau dọn dẹp, cuốc đất và gieo xuống những hạt mầm hy vọng. Giờ đây, hàng ngàn đóa hoa như những mặt trời nhỏ xèo cánh vàng tươi rực rỡ, reo vui trong gió, xua tan đi vẻ ảm đạm ngày xưa để tô điểm cho xóm nhỏ thân yêu.`,
-          highlights: [
-            { text: "như những mặt trời nhỏ xèo cánh vàng tươi rực rỡ", type: "rhetorical", explanation: "Biện pháp so sánh ví hoa hướng dương với mặt trời nhỏ tạo hình ảnh sinh động, đầy năng lượng và tươi sáng." },
-            { text: "lòng trào dâng niềm tự hào khôn tả", type: "emotion", explanation: "Cảm xúc tự hào, vui sướng của nhân vật khi thấy công sức của mình và các bạn mang lại vẻ đẹp cho quê hương." },
-            { text: "gieo xuống những hạt mầm hy vọng", type: "rhetorical", explanation: "Ẩn dụ nghệ thuật, thể hiện mong ước và niềm tin của các bạn nhỏ vào hành động đẹp bảo vệ môi trường." }
-          ],
-          analysis: [
-            "Đoạn văn kể lại khoảnh khắc thành quả lao động đầy tự hào của các bạn nhỏ dưới dạng ngôi kể thứ nhất.",
-            "Sử dụng các từ ngữ miêu tả tương phản rõ rệt giữa bãi đất hoang xám xịt và cánh đồng hoa rực rỡ sắc màu.",
-            "Truyền tải thông điệp sâu sắc về tinh thần đoàn kết của tuổi thơ và ý thức làm đẹp cho môi trường sống."
-          ]
-        };
-      } else {
-        return {
+      const options: SampleEssayResult[] = [
+        // Option 1: Vai Ja Ka (Mặc định)
+        {
           format: 'essay',
-          content: `Tôi là Lan, một học sinh nhỏ sinh sống ở xóm núi ven đô. Mỗi lần nhìn ngắm những du khách hào hứng chụp ảnh bên thung lũng hoa rực rỡ, lòng tôi lại bồi hồi nhớ về những ngày tháng chung tay biến bãi đất hoang xám xịt thành một cánh đồng hoa tươi thắm.\n\nCâu chuyện bắt đầu từ mùa hè năm ngoái. Nơi đây vốn là một bãi đất trống bỏ hoang, cỏ dại mọc um tùm và dần biến thành bãi rác bốc mùi xú uế của xóm. Thấy cảnh quê hương ngày một xấu đi, tôi cùng các bạn trong nhóm đã nảy ra ý tưởng táo bạo: biến bãi rác thành vườn hoa. Nghĩ là làm, chúng tôi bắt tay vào dọn dẹp rác thải. Những ngày đầu thật gian nan, đôi bàn tay nhỏ bé của chúng tôi mỏi nhừ vì cuốc đất, nhổ cỏ dại dưới nắng hè nóng bức. Thế nhưng, không ai nản chí. Các bạn nam gánh đất, các bạn nữ tỉ mỉ gieo từng hạt hoa cúc bách nhật, hoa hướng dương. Mỗi chiều đi học về, chúng tôi lại tíu tít tiếng cười, cùng nhau xách từng xô nước tưới tắm cho mầm xanh. Kỳ diệu thay, chỉ sau vài tháng chăm sóc, những nụ hoa đầu tiên đã hé nở. Cả bãi đất xám xịt ngày nào giờ đã hóa thành một thảm hoa rực rỡ muôn màu muôn sắc, tỏa hương thơm ngào ngạt khắp không gian.\n\nCánh đồng hoa hướng dương lấp lánh dưới nắng mai không chỉ làm đẹp thêm xóm nhỏ của tôi mà còn nở hoa trong lòng mỗi chúng tôi về tình bạn và sức mạnh của sự chung tay đoàn kết. Tôi tự hứa sẽ luôn gìn giữ, bảo vệ thung lũng hoa xinh đẹp này để xóm nhỏ luôn ngập tràn sắc màu ấm áp.`,
+          content: `Tôi là Ja Ka, một cậu bé lớn lên cùng buôn làng Tây Nguyên yên bình. Mỗi chiều đi học về, tôi lại cùng nhóm bạn thân thiết gồm Mư Hoa, Ja Prok và Mư Nhơ tụ họp vui chơi thỏa thích trên đồng cỏ xanh mướt đầu làng. Đó là thiên đường tuổi thơ cho đến khi bãi rác bốc mùi xú uế xuất hiện, phá hỏng không gian trong lành.\n\nChứng kiến cảnh tượng đồng cỏ yêu dấu ngày một hoang tàn, lòng tôi trĩu nặng buồn bã. May sao, Mư Hoa đã nảy ra một ý tưởng vô cùng sáng tạo: chúng tôi sẽ trồng hoa phủ kín nơi này để mọi người không nỡ vứt rác nữa. Nghĩ là làm, tôi cùng Ja Prok gom rác lại một góc rồi đào hố chôn lấp cẩn thận. Mư Hoa và Mư Nhơ tíu tít chia nhau xới đất gieo những hạt mầm đầu tiên. Thấy hành động đẹp của chúng tôi, các cô bác trong làng cũng hào hứng hưởng ứng nhiệt tình, cùng đem cuốc xẻng ra phụ giúp. Suốt ba tháng ròng rã, chúng tôi cùng nhau tưới tắm, chăm sóc. Để rồi một ngày nắng ấm, từ bãi đất ngập rác ngày nào giờ đã hóa thành một thảm hoa rực rỡ, lung linh khoe sắc trước gió ngàn.\n\nCánh đồng hoa rực rỡ sắc màu không chỉ làm đẹp buôn làng mà còn gắn kết tình cảm xóm giềng ấm áp. Kỷ niệm chung tay lao động ấy giúp tôi nhận ra rằng, chỉ cần đồng lòng quyết tâm, chúng ta có thể biến những điều xấu xí thành vẻ đẹp kỳ diệu bảo vệ môi trường quê hương.`,
           highlights: [
-            { text: "biến bãi đất hoang xám xịt thành một cánh đồng hoa tươi thắm", type: "imagery", explanation: "Hình ảnh tương phản mạnh mẽ thể hiện sức lao động và sự thay đổi kỳ diệu của cảnh vật." },
-            { text: "tíu tít tiếng cười, cùng nhau xách từng xô nước", type: "vocabulary", explanation: "Từ láy 'tíu tít' gợi tả bầu không khí vui tươi, hăng say lao động của tuổi thơ." },
-            { text: "nở hoa trong lòng mỗi chúng tôi về tình bạn", type: "rhetorical", explanation: "Hình ảnh ẩn dụ đầy chất thơ, nhấn mạnh tình bạn bền chặt được vun đắp qua quá trình cùng làm việc ý nghĩa." }
+            { text: "thảm hoa rực rỡ, lung linh khoe sắc trước gió ngàn", type: "imagery", explanation: "Từ ngữ gợi hình miêu tả vẻ đẹp lung linh của đồng hoa sau quá trình chăm sóc gian khổ." },
+            { text: "tíu tít chia nhau xới đất gieo những hạt mầm", type: "vocabulary", explanation: "Từ láy 'tíu tít' lột tả bầu không khí lao động hào hứng, vui tươi của nhóm bạn nhỏ." },
+            { text: "biến những điều xấu xí thành vẻ đẹp kỳ diệu", type: "rhetorical", explanation: "Nghệ thuật tương phản đối lập làm nổi bật ý nghĩa nhân văn sâu sắc của câu chuyện cải tạo môi trường." }
           ],
           analysis: [
-            "Bố cục 3 phần rõ ràng, dẫn dắt bằng ngôi kể thứ nhất tự nhiên, chân thực.",
-            "Diễn biến truyện sáng tạo, thêm thắt các chi tiết miêu tả cảm xúc và hành động lao động cụ thể của các bạn nhỏ lớp 5.",
-            "Khẳng định bài học sâu sắc về tinh thần đoàn kết và ý thức bảo vệ môi trường, mang tính giáo dục cao."
+            "Kể câu chuyện bám sát cốt truyện SGK Tiếng Việt 5 (Cánh đồng hoa) với đầy đủ các nhân vật Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ.",
+            "Bố cục bài văn 3 phần hoàn chỉnh, lời văn giàu hình ảnh so sánh sinh động.",
+            "Truyền tải thông điệp sâu sắc về tinh thần đoàn kết cộng đồng và ý thức bảo vệ môi trường xanh."
           ]
-        };
+        },
+        // Option 2: Vai Mư Hoa (hoặc Mơ Hoa do học sinh gõ nhầm)
+        {
+          format: 'essay',
+          content: `Tôi là Mư Hoa (ở buôn làng các bạn đôi lúc vẫn gọi yêu là Mơ Hoa). Là một cô bé yêu thiên nhiên, tôi trân quý từng gốc cây ngọn cỏ trên đồng cỏ đầu làng nơi tôi cùng các bạn Ja Ka, Ja Prok và Mư Nhơ thường múa hát tưng bừng. Khi đồng cỏ yêu thích bị mọi người xả rác bừa bãi bốc mùi hôi thối, lòng tôi đau xót khôn nguôi.\n\nQuyết tâm cứu lấy thiên đường tuổi thơ, tôi đã nảy ra suy nghĩ: "Nếu nơi đây là một cánh đồng hoa rực rỡ, chắc chắn mọi người sẽ không nỡ đổ rác nữa". Tôi đem ý tưởng này bàn với nhóm bạn và nhận được sự đồng ý ngay lập tức. Ja Ka và Ja Prok xung phong dọn dẹp đống rác bẩn thỉu. Tôi cùng Mư Nhơ đi xin hạt giống hoa cúc, hoa mười giờ đem về gieo trồng. Nhìn thấy đôi bàn tay nhỏ bé của chúng tôi cặm cụi dưới nắng chiều, dân làng vô cùng cảm động và đã chung tay phụ giúp xới đất gieo hạt. Kỳ diệu thay, sau những ngày tháng kiên trì tưới tắm dưới cái nắng Tây Nguyên, cánh đồng hoa lung linh khoe sắc rực rỡ như một bức tranh thổ cẩm khổng lồ trải dài trước buôn làng.\n\nNhìn du khách thích thú đứng ngắm hoa, tôi mỉm cười hạnh phúc. Câu chuyện dạy tôi bài học quý giá rằng tình yêu quê hương luôn bắt đầu từ những hành động nhỏ bé và sự sáng tạo kiên cường để đẩy lùi những điều xấu xí.`,
+          highlights: [
+            { text: "rực rỡ như một bức tranh thổ cẩm khổng lồ", type: "rhetorical", explanation: "Phép so sánh độc đáo mang đậm bản sắc Tây Nguyên, ví cánh đồng hoa với tranh thổ cẩm nhiều sắc màu." },
+            { text: "cặm cụi dưới nắng chiều", type: "vocabulary", explanation: "Từ láy 'cặm cụi' lột tả nghị lực lao động âm thầm đầy cố gắng của cô bé Mư Hoa cùng các bạn." },
+            { text: "lòng tôi đau xót khôn nguôi", type: "emotion", explanation: "Bộc lộ tình yêu quê hương và sự nhạy cảm tinh tế trước thiên nhiên bị hủy hoại." }
+          ],
+          analysis: [
+            "Đóng vai nhân vật Mư Hoa kể chuyện tự nhiên, giải quyết trực tiếp yêu cầu đóng vai của học sinh.",
+            "Tình tiết phát triển mạch lạc, trung thực với nguyên bản văn bản đọc trong sách giáo khoa TV 5 Tập 1.",
+            "Ngôn từ giàu tính nhạc điệu và văn phong biểu cảm trong sáng thích hợp đạt điểm 10."
+          ]
+        },
+        // Option 3: Kể theo ngôi thứ ba (Variety)
+        {
+          format: 'essay',
+          content: `Ở một buôn làng Tây Nguyên tươi đẹp, đầu làng có một đồng cỏ xanh mướt là nơi nhóm bạn Ja Ka, Mư Hoa, Ja Prok và Mư Nhơ thường tụ hội vui chơi, múa hát tưng bừng. Thế nhưng, vẻ thanh bình ấy dần biến mất khi bãi rác xuất hiện, ngày một phình to ra và bốc mùi khó chịu.\n\nKhông đành lòng nhìn đồng cỏ bị phá hủy, cô bé Mư Hoa đã nảy ra sáng kiến trồng hoa che phủ đất trống để ngăn chặn việc xả rác. Nhóm bạn nhỏ lập tức đồng lòng cùng hành động. Ja Ka và Ja Prok nhanh nhẹn thu dọn rác bẩn, còn Mư Hoa và Mư Nhơ đi gom hạt giống hoa. Sự chăm chỉ của các bạn đã lay động cả buôn làng. Các cô bác kéo nhau mang cuốc xẻng ra xới đất gieo hạt. Trải qua ba tháng chăm sóc kiên trì, đồng cỏ xưa đã lột xác ngoạn mục thành một cánh đồng hoa rực rỡ muôn màu muôn sắc. Khách tham quan khắp nơi đổ về ngắm cảnh, buôn làng ngập tràn niềm vui sướng hân hoan.\n\nCâu chuyện về cánh đồng hoa của nhóm bạn Ja Ka đã lan tỏa bài học vàng về ý thức bảo vệ môi trường. Nó là minh chứng hùng hồn cho thấy tinh thần đoàn kết và tư duy sáng tạo của tuổi trẻ có thể làm nên những đổi thay kỳ diệu cho quê hương.`,
+          highlights: [
+            { text: "xanh mướt, hoang tàn, rực rỡ, hân hoan", type: "vocabulary", explanation: "Sử dụng các tính từ miêu tả trạng thái đối lập để nhấn mạnh sự thay đổi tuyệt vời của cảnh vật đầu làng." },
+            { text: "lột xác ngoạn mục thành một cánh đồng hoa rực rỡ", type: "rhetorical", explanation: "Sử dụng biện pháp ẩn dụ 'lột xác' để mô tả sự chuyển biến to lớn từ bãi rác thành vườn hoa." },
+            { text: "đồng lòng cùng hành động... lay động cả buôn làng", type: "rhetorical", explanation: "Lặp từ 'động' khéo léo để nhấn mạnh tính lan tỏa của hành vi bảo vệ môi trường." }
+          ],
+          analysis: [
+            "Kể câu chuyện bằng ngôi thứ ba giúp bài viết có cái nhìn khách quan, miêu tả toàn cảnh.",
+            "Từ ngữ tinh tế, mô tả rõ nét quá trình chung tay từ nhóm nhỏ lan rộng ra toàn buôn làng.",
+            "Rút ra ý nghĩa sư phạm cao quý về bài học giáo dục bảo vệ thiên nhiên quanh em."
+          ]
+        }
+      ];
+
+      // If topic specifically mentions "mơ hoa" or "mư hoa"
+      if (topicLower.includes('mơ hoa') || topicLower.includes('mư hoa')) {
+        const option = options[1];
+        return isParagraph ? convertEssayToParagraph(option) : option;
       }
+      // If topic mentions "ja ka"
+      if (topicLower.includes('ja ka')) {
+        const option = options[0];
+        return isParagraph ? convertEssayToParagraph(option) : option;
+      }
+      // Otherwise, return a random option to provide variety
+      const chosen = getRandomOption(options);
+      return isParagraph ? convertEssayToParagraph(chosen) : chosen;
     }
 
     if (topicLower.includes('thanh âm của gió')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Nằm dài trên thảm cỏ xanh mát rượi của thung lũng lộng gió, tôi nhắm nghiền mắt và chăm chú lắng nghe bản hòa ca kỳ diệu của gió trời. Tiếng gió luồn qua khe đá rì rào tựa như lời thì thầm kể những câu chuyện cổ tích xa xưa, rồi lại xạc xào qua kẽ lá tre nghe như tiếng đàn tranh êm ái xua tan đi bao mệt mỏi của muôn loài. Gió mát lành đưa hương thơm dịu nhẹ của hoa dại phả nhẹ lên gương mặt tôi ấm áp. Tôi chợt nhận ra gió không hề vô hình mà luôn hiện hữu, hát ca và mang những thanh âm yêu thương kết nối trái tim muôn loài muông thú nơi thung lũng xinh đẹp này.`,
-          highlights: [
-            { text: "rì rào tựa như lời thì thầm kể những câu chuyện cổ tích", type: "rhetorical", explanation: "So sánh và nhân hóa tiếng gió giúp âm thanh vô hình trở nên gần gũi, mang đậm màu sắc huyền ảo của thế giới tuổi thơ." },
-            { text: "xạc xào qua kẽ lá", type: "vocabulary", explanation: "Từ láy gợi âm 'xạc xào' giúp người đọc cảm nhận rõ tiếng lá tre đung đưa theo từng nhịp gió thổi." },
-            { text: "mang những thanh âm yêu thương kết nối trái tim muôn loài", type: "emotion", explanation: "Thể hiện sự thấu cảm sâu sắc của nhân vật với thiên nhiên, lan tỏa tình yêu thương bình dị." }
-          ],
-          analysis: [
-            "Đoạn văn miêu tả xúc cảm tinh tế khi lắng nghe tiếng gió qua ngôi kể thứ nhất.",
-            "Sử dụng từ ngữ khơi gợi thính giác và khứu giác phong phú (rì rào, xạc xào, dịu nhẹ).",
-            "Tôn vinh vẻ đẹp bình yên của thiên nhiên và tình yêu thế giới quanh em."
-          ]
-        };
-      } else {
-        return {
+      const options: SampleEssayResult[] = [
+        // Option 1: Vai người anh trai (Mặc định)
+        {
           format: 'essay',
-          content: `Tôi là Thỏ tai dài, cư dân nhỏ bé sinh sống tại thung lũng lộng gió xinh đẹp dưới chân núi lớn. Nơi đây quanh năm gió thổi rì rào, và chính những cơn gió mát lành ấy đã dạy cho tôi cùng các bạn muông thú bài học vô giá về sự thấu cảm và lắng nghe những thanh âm kỳ diệu của cuộc sống.\n\nMùa thu năm ấy, thung lũng đón những đợt gió lớn khô cằn. Ban đầu, gió rít lên sầm sập qua khe đá khiến muông thú hoảng sợ trốn sâu trong hang. Bác Bò già than thở gió làm xơ xác đồng cỏ, cừu con sợ hãi vì tiếng gió gào rú rú ghê rợn. Thấy các bạn buồn bã, tôi quyết định rủ mọi người cùng bước ra ngoài, nhắm mắt lại và cùng tập trung lắng nghe thật sâu. Ban đầu chỉ là tiếng rít ù ù. Nhưng khi chúng tôi thả lỏng tâm hồn, một phép màu đã xuất hiện. Tiếng gió va vào vách đá tạo nên một nhịp điệu trầm hùng tựa tiếng trống trận của đất trời. Khi luồn qua rừng thông rộng lớn, gió lại xạc xào dịu êm như tiếng mẹ ru ngủ ấm áp. Gió mang theo cả hương thơm ngọt ngào của mật ong rừng và phấn hoa dại bay đi xa. Tất cả chúng tôi cùng ngỡ ngàng nhận ra: gió đang cất tiếng hát ca để kết nối và chia sẻ niềm vui với thung lũng.\n\nTừ ngày đó, muông thú không còn sợ hãi gió nữa. Mỗi chiều hoàng hôn buông xuống, chúng tôi lại nằm bên nhau trên đồng cỏ xanh mướt, cùng đón gió mát lành và lắng nghe bản hòa ca yêu thương của đất trời. Tôi hiểu rằng, chỉ cần ta lắng nghe bằng cả tấm lòng chân thành, vạn vật xung quanh đều có những thanh âm kỳ diệu riêng của chúng.`,
+          content: `Tôi vẫn nhớ như in những buổi chiều thu thanh bình bên dòng suối nhỏ dưới chân đồi. Chiều hôm ấy, tôi cùng bé Bống và nhóm bạn Điệp, Văn, Thành lùa đàn trâu ra bờ suối gặm cỏ. Trong khi chúng tôi đang mải mê chơi đùa, bé Bống chợt reo lên và phát hiện ra một trò chơi lắng nghe gió vô cùng kỳ diệu.\n\nBống bảo chúng tôi hãy nhắm mắt lại, lấy hai tay bịt tai lại rồi mở ra liên tục theo nhịp. Ban đầu tôi nghĩ đó chỉ là trò đùa trẻ con, nhưng khi làm thử, lòng tôi bỗng kinh ngạc vô cùng. Mỗi lần bịt tai rồi mở ra, tiếng gió rì rào luồn qua khe đá bỗng nghe rầm rì như lời thì thầm kể chuyện cổ tích. Tiếng gió xạc xào qua rặng tre lại du dương tựa như tiếng sáo trúc êm ái xua tan mọi mệt mỏi. Gió mang theo cả hương hoa dại ngọt ngào thổi mơn man lên da thịt. Tối hôm đó, hai anh em tôi tíu tít kể lại trò chơi cho bố nghe. Bố bật cười hiền hậu, bịt tai rồi mở ra thử nghiệm và cũng hào hứng reo lên như một đứa trẻ.\n\nTrò chơi lắng nghe tiếng gió của bé Bống giúp tôi nhận ra thiên nhiên quanh mình luôn chứa đựng những thanh âm kỳ diệu. Chỉ cần mở lòng thấu cảm, nhẫn nại lắng nghe, ta sẽ cảm nhận được tiếng nói yêu thương của đất trời quê hương.`,
           highlights: [
-            { text: "rì rào dịu êm như tiếng mẹ ru ngủ ấm áp", type: "rhetorical", explanation: "Biáp so sánh ví tiếng gió với tiếng mẹ ru mang lại cảm giác an yên, tràn ngập tình yêu thương gia đình." },
-            { text: "sầm sập, xạc xào, ngọt ngào", type: "vocabulary", explanation: "Sử dụng chuỗi từ láy gợi tả cả âm thanh lẫn khứu giác một cách uyển chuyển sinh động." },
-            { text: "lắng nghe bằng cả tấm lòng chân thành", type: "emotion", explanation: "Cảm xúc lắng đọng, khuyên người đọc biết trân trọng và lắng nghe tiếng nói của thiên nhiên xung quanh." }
+            { text: "rì rào luồn qua khe đá bỗng nghe rầm rì như lời thì thầm", type: "rhetorical", explanation: "Nghệ thuật so sánh tiếng gió với lời thì thầm tạo hình ảnh bí ẩn, gần gũi như truyện cổ tích." },
+            { text: "xạc xào qua rặng tre lại du dương tựa như tiếng sáo trúc", type: "rhetorical", explanation: "So sánh tiếng gió rặng tre với tiếng sáo trúc du dương gợi tả thính giác sinh động." },
+            { text: "mơn man, xạc xào, ngọt ngào", type: "vocabulary", explanation: "Các từ láy gợi tả xúc giác và âm thanh êm dịu của gió mùa thu." }
           ],
           analysis: [
-            "Bố cục rõ ràng, hóa thân kể chuyện sáng tạo bằng ngôi kể thứ nhất sinh động, lôi cuốn.",
-            "Cách xây dựng cốt truyện khơi gợi trí tưởng tượng phong phú cho học sinh tiểu học về âm thanh thiên nhiên.",
-            "Bài học triết lý nhẹ nhàng về sự kiêu hãnh của tự nhiên và sức mạnh của việc thấu cảm, lắng nghe."
+            "Kể câu chuyện bám sát cốt truyện 'Thanh âm của gió' (trích truyện Văn Thành Lê) với các nhân vật Bống, Điệp, Văn, Thành, Bố.",
+            "Bộc lộ tình cảm gia đình ấm áp và sự thấu cảm với các thanh âm của thiên nhiên hoang sơ.",
+            "Lựa chọn ngôi kể thứ nhất tự nhiên, giàu tính nhạc điệu và biểu cảm."
           ]
-        };
+        },
+        // Option 2: Vai bé Bống
+        {
+          format: 'essay',
+          content: `Tôi là Bống, một cô bé thích khám phá những điều thú vị xung quanh. Chiều hôm ấy là một buổi chiều thật đáng nhớ khi tôi cùng anh trai và các bạn Điệp, Văn, Thành đi chăn trâu bên suối. Nhìn ngắm cánh đồng cỏ lộng gió, tôi đã vô tình tìm ra cách để nghe thấy khúc hát của chị gió trời.\n\nKhi gió thổi lướt qua tai mát rượi, tôi thử lấy hai tay bịt chặt tai lại rồi buông ra liên tục. Thật kỳ diệu, tôi reo vang gọi anh trai và các bạn chạy lại xem cùng. Tiếng gió ù ù ban đầu bỗng chốc hóa thành những thanh âm biến hóa khôn lường. Lúc thì rì rào thầm thì như tiếng đọc sách nhỏ nhẹ bên khe đá, lúc lại xào xạc vang lên như tiếng đàn tranh của ai đó gảy giữa núi đồi. Mọi người đều thích thú làm theo, tiếng cười đùa vang dội khắp bờ suối. Khi hoàng hôn buông xuống, hai anh em chạy ùa về nhà kể ngay cho bố nghe. Nhìn thấy bố cũng hào hứng bịt tai lại để nghe tiếng gió rì rào cùng hai con dưới ánh đèn ấm áp, lòng tôi tràn ngập niềm vui sướng lâng lâng.\n\nTừ buổi chiều hôm đó, tôi càng thêm yêu quý gió và thiên nhiên quê hương. Tôi hiểu rằng gió luôn có tiếng nói riêng để bầu bạn với con người, chỉ cần chúng ta chịu lắng nghe bằng cả trái tim chân thành.`,
+          highlights: [
+            { text: "lúc lại xào xạc vang lên như tiếng đàn tranh", type: "rhetorical", explanation: "Ví tiếng gió xào xạc với đàn tranh làm nổi bật sự êm ái, nghệ thuật của thanh âm tự nhiên." },
+            { text: "lòng tôi tràn ngập niềm vui sướng lâng lâng", type: "emotion", explanation: "Từ láy 'lâng lâng' mô tả trạng thái hạnh phúc tuyệt vời khi chia sẻ niềm vui với gia đình." },
+            { text: "bịt chặt tai lại rồi buông ra", type: "imagery", explanation: "Chi tiết tả hành động đặc trưng tạo nên trò chơi nghe gió vô cùng sáng tạo của bé Bống." }
+          ],
+          analysis: [
+            "Đóng vai nhân vật bé Bống kể lại câu chuyện một cách hồn nhiên, trong trẻo đúng lứa tuổi lớp 5.",
+            "Cốt truyện trung thành tuyệt đối với tác phẩm gốc trong SGK Kết nối tri thức Tập 1.",
+            "Hướng học sinh mở rộng trí tưởng tượng và biết sẻ chia hạnh phúc với gia đình."
+          ]
+        }
+      ];
+
+      if (topicLower.includes('bống') || topicLower.includes('bé bống')) {
+        const option = options[1];
+        return isParagraph ? convertEssayToParagraph(option) : option;
       }
+      const chosen = getRandomOption(options);
+      return isParagraph ? convertEssayToParagraph(chosen) : chosen;
     }
 
     if (topicLower.includes('rùa và thỏ')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Từng bước chân nặng nề nhưng vững chãi, tôi - chú Rùa kiên cường - vẫn cặm cụi bò về phía trước, mặc kệ những lời trêu chọc kiêu ngạo của thỏ ta đang nằm ngủ mơ màng dưới bóng mát cây sấu cổ thụ. Dẫu chiếc mai trên lưng có nặng trĩu, dẫu mồ hôi đầm đìa ướt đẫm cả lối đi, tôi tự nhủ lòng không bao giờ được phép bỏ cuộc giữa chừng. Tiếng hò reo cổ vũ xa xa của bác Khỉ, chị Sóc đã tiếp thêm cho tôi sức mạnh. Khi thỏ giật mình thức giấc thì đã quá muộn, bàn chân nhỏ bé của tôi đã kiêu hãnh chạm tới đích đến thành công trong tiếng vỗ tay vang dội của cả khu rừng.`,
-          highlights: [
-            { text: "Rùa kiên cường - vẫn cặm cụi bò về phía trước", type: "vocabulary", explanation: "Từ láy 'cặm cụi' lột tả chân thực sự kiên trì, chăm chỉ không ngừng nghỉ của chú Rùa." },
-            { text: "nằm ngủ mơ màng dưới bóng mát cây sấu cổ thụ", type: "imagery", explanation: "Hình ảnh đối lập khắc họa sự chủ quan, kiêu ngạo và lười biếng của chú Thỏ." },
-            { text: "kiêu hãnh chạm tới đích đến thành công", type: "emotion", explanation: "Bộc lộ niềm hạnh phúc và vinh quang xứng đáng cho sự kiên trì bền bỉ." }
-          ],
-          analysis: [
-            "Đoạn văn đóng vai nhân vật Rùa kể lại chương cuối đầy kịch tính của cuộc đua chạy bộ.",
-            "Tập trung khắc họa các chi tiết đối lập hành động giữa Rùa (cặm cụi) và Thỏ (ngủ mơ màng).",
-            "Nêu bật bài học vàng về lòng kiên trì và bài trừ tính chủ quan kiêu ngạo."
-          ]
-        };
-      } else {
-        return {
+      const options: SampleEssayResult[] = [
+        // Option 1: Vai Rùa (Mặc định)
+        {
           format: 'essay',
-          content: `Tôi là Rùa, người đã làm nên chiến thắng lịch sử trong cuộc chạy đua huyền thoại với chú Thỏ kiêu ngạo năm xưa. Đã nhiều năm trôi qua, chiếc cúp vô địch vẫn được treo trang trọng trong nhà tôi, gợi nhắc một bài học sâu sắc về lòng kiên trì và sự nỗ lực không ngừng nghỉ cho con cháu đời sau.\n\nNgày ấy, Thỏ nổi tiếng khắp rừng xanh nhờ đôi chân dài thoăn thoắt và tốc độ chạy nhanh như gió. Gặp ai chú ta cũng ba hoa, tự mãn và coi thường những loài vật chậm chạp như tôi. Không chịu nổi sự kiêu căng của Thỏ, tôi đã nhận lời thách đấu chạy đua. Cả khu rừng đổ xô đến cổ vũ đông nghẹt. Khi tiếng còi khai cuộc vang lên, Thỏ phóng vụt đi như một mũi tên xé gió, rồi dừng lại ngoảnh đầu trêu chọc tôi. Nghĩ rằng tôi còn lâu mới đuổi kịp, Thỏ thong thả đuổi bướm hái hoa, rồi thảnh thơi nằm ngủ dưới một gốc cây mát rượi. Trong khi đó, tôi biết mình yếu thế nên chỉ tập trung bò từng bước một. Chiếc mai nặng trĩu kéo sát mặt đất, chân tôi mỏi nhừ và mồ hôi rơi lã chã. Nhưng lòng tôi luôn vững tin vào vạch đích phía trước. Cứ thế, cặm cụi và kiên trì, tôi đã vượt qua chỗ Thỏ đang ngáy khò khò. Khi chỉ còn vài bước là tới đích, muông thú reo hò ầm ĩ khiến Thỏ giật mình tỉnh giấc. Chú ta vội vàng cuống cuồng phóng đi nhưng đã quá muộn. Tôi đã chạm chân vào vạch đích trước sự ngỡ ngàng của cả khu rừng.\n\nChiến thắng vang dội năm ấy đã dạy cho tôi bài học khắc cốt ghi tâm: Chậm chạp nhưng kiên trì, nhẫn nại sẽ luôn chiến thắng sự nhanh nhẹn nhưng kiêu ngạo, lười biếng. Đó là hành trang quý giá giúp tôi vượt qua mọi khó khăn trong cuộc sống sau này.`,
+          content: `Tôi là Rùa, người chiến thắng chú Thỏ kiêu ngạo trong cuộc chạy đua huyền thoại năm xưa. Chiến thắng ấy đến nay vẫn được muông thú nhắc lại như một bài học sâu sắc về lòng kiên trì và sự nỗ lực bền bỉ.\n\nNgày ấy, Thỏ cậy đôi chân dài nhanh nhẹn chạy nhanh như gió nên thường chế giễu những loài chậm chạp như tôi. Không chịu nổi thói kiêu căng ấy, tôi nhận lời đua chạy với Thỏ. Khi cuộc đua bắt đầu, Thỏ vọt đi như một tia chớp, rồi chủ quan dừng lại hái hoa bắt bướm và nằm ngủ mơ màng dưới gốc cây. Tôi biết mình chậm chạp nên cặm cụi bò từng bước một không ngừng nghỉ. Dù mồ hôi ướt đẫm, tôi vẫn kiên trì tiến bước hướng về phía trước. Khi Thỏ giật mình thức giấc thì tôi đã đặt bước chân quyết định chạm vạch đích trong tiếng reo hò của cả khu rừng.\n\nCuộc đua huyền thoại đã chứng minh rằng: Chậm chạp nhưng kiên trì, nhẫn nại sẽ luôn chiến thắng sự nhanh nhẹn nhưng kiêu ngạo, lười biếng.`,
           highlights: [
-            { text: "phóng vụt đi như một mũi tên xé gió", type: "rhetorical", explanation: "So sánh ví Thỏ chạy như mũi tên xé gió làm nổi bật tốc độ đáng gờm nhưng cũng tương phản với thói kiêu ngạo sau đó." },
-            { text: "thong thả, cặm cụi, cuống cuồng", type: "vocabulary", explanation: "Chuỗi từ láy chỉ trạng thái đối nghịch vô cùng sinh động của hai nhân vật trong cuộc đua." },
-            { text: "lòng tôi luôn vững tin vào vạch đích phía trước", type: "emotion", explanation: "Thể hiện ý chí quyết tâm cao độ, không nản chí trước khó khăn của Rùa." }
+            { text: "cặm cụi bò từng bước một không ngừng nghỉ", type: "vocabulary", explanation: "Từ láy 'cặm cụi' miêu tả chân thực thái độ kiên nhẫn, chịu khó của Rùa." },
+            { text: "vọt đi như một tia chớp", type: "rhetorical", explanation: "Phép so sánh làm nổi bật ưu thế tốc độ vượt trội của Thỏ nhưng tương phản với sự lười biếng sau đó." }
           ],
           analysis: [
-            "Bố cục chặt chẽ, đóng vai ngôi thứ nhất dẫn dắt sinh động bằng giọng kể oai hùng của Rùa.",
-            "Tình tiết được sáng tạo và đẩy lên cao trào kịch tính ở phần cuối cuộc đua.",
-            "Khẳng định bài học nhân văn sâu sắc về ý chí, lòng kiên trì vượt lên giới hạn bản thân."
+            "Ngôi kể thứ nhất chân thực, đóng vai Rùa kể câu chuyện ngụ ngôn quen thuộc.",
+            "Lý luận và bài học rút ra rõ ràng, thích hợp giáo dục phẩm chất đạo đức học sinh."
           ]
-        };
+        },
+        // Option 2: Vai Thỏ hối hận (Variety)
+        {
+          format: 'essay',
+          content: `Tôi là Thỏ, kẻ bại trận kiêu ngạo trong cuộc chạy đua lịch sử với anh Rùa. Thất bại muối mặt năm ấy là gáo nước lạnh giúp tôi tỉnh ngộ, nhận ra thói chủ quan tự phụ nguy hiểm đến nhường nào.\n\nNgày ấy, tôi sở hữu đôi chân dài thoăn thoắt đứng đầu rừng xanh nên sinh thói kiêu căng ngạo mạn. Thấy anh Rùa còng lưng chậm chạp bò từng bước, tôi thách đấu đua chạy đầy tự mãn. Khi xuất phát, tôi phóng vụt đi bỏ xa anh Rùa một quãng dài. Nghĩ bụng anh Rùa có bò cả ngày cũng không đuổi kịp, tôi ung dung hái hoa, ngắm cảnh rồi ngủ thiếp đi dưới bóng mát. Khi giật mình tỉnh giấc nghe tiếng hô reo cổ vũ của muông thú, tôi cuống cuồng vắt chân lên cổ chạy nhưng đã muộn: anh Rùa đã kiêu hãnh chạm vạch đích trước. Giờ đây nghĩ lại, lòng tôi vẫn ngượng ngùng hối hận vô cùng.\n\nThất bại trước anh Rùa dạy tôi bài học đắt giá: Sự kiêu ngạo và lười biếng sẽ phá hỏng tài năng. Tôi tự hứa sẽ luôn khiêm tốn và kiên trì rèn luyện từng ngày.`,
+          highlights: [
+            { text: "cuống cuồng vắt chân lên cổ chạy", type: "vocabulary", explanation: "Thành ngữ và từ láy tả trạng thái hoảng sợ, vội vã của Thỏ khi thức giấc." },
+            { text: "lòng tôi vẫn ngượng ngùng hối hận vô cùng", type: "emotion", explanation: "Bày tỏ cảm xúc ăn năn, nhận thức được bài học từ sai lầm của bản thân." }
+          ],
+          analysis: [
+            "Góc nhìn mới lạ (đóng vai Thỏ bại trận) giúp câu chuyện trở nên sáng tạo, giàu tính giáo dục tự kiểm điểm.",
+            "Hành văn trôi chảy, sử dụng linh hoạt thành ngữ dân gian."
+          ]
+        }
+      ];
+
+      if (topicLower.includes('thỏ') || topicLower.includes('chú thỏ')) {
+        const option = options[1];
+        return isParagraph ? convertEssayToParagraph(option) : option;
       }
+      const chosen = getRandomOption(options);
+      return isParagraph ? convertEssayToParagraph(chosen) : chosen;
     }
   }
 
@@ -121,71 +169,41 @@ export function getDynamicMockEssay(
   // -------------------------------------------------------------
   if (type === 'ta-canh') {
     if (topicLower.includes('sơn đoòng')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Bên trong hang Sơn Đoòng vĩ đại, em như lạc vào một thế giới cổ tích kỳ ảo, nơi thiên nhiên đã tạc nên những khối thạch nhũ khổng lồ cao sừng sững như những cột chống trời nghìn năm tuổi. Từ trần hang cao vút, ánh nắng mặt trời lọt qua những hố sụt khổng lồ chiếu rọi xuống lòng hang, đánh thức một cánh rừng nguyên sinh xanh mướt với thảm thực vật phong phú ngay sâu trong lòng đất ấm áp. Tiếng dòng sông ngầm chảy rì rào rầm rì luồn qua các kẽ đá tạo nên một thanh âm hoang sơ, huyền bí, khiến bất cứ ai đứng trước kỳ quan vĩ đại này cũng thấy lòng trào dâng niềm tự hào và xúc động sâu sắc về giang sơn gấm vóc Việt Nam.`,
-          highlights: [
-            { text: "cao sừng sững như những cột chống trời nghìn năm tuổi", type: "rhetorical", explanation: "So sánh thạch nhũ với cột chống trời giúp người đọc hình dung được sự đồ sộ, kỳ vĩ của hang động lớn nhất thế giới." },
-            { text: "rầm rì, sừng sững, xanh mướt", type: "vocabulary", explanation: "Từ láy 'rầm rì' gợi âm thanh sông ngầm trầm ấm, bí ẩn chảy mãi không ngừng." },
-            { text: "thấy lòng trào dâng niềm tự hào và xúc động sâu sắc", type: "emotion", explanation: "Bày tỏ tình yêu quê hương đất nước qua sự kinh ngạc, kính phục thiên nhiên vĩ đại." }
-          ],
-          analysis: [
-            "Đoạn văn chọn lọc các chi tiết tả cảnh vô cùng đắt giá của Sơn Đoòng (thạch nhũ, hố sụt, rừng ngầm).",
-            "Ngôn từ giàu tính tạo hình mạnh mẽ, kết hợp nghệ thuật so sánh tạo liên tưởng phong phú.",
-            "Bồi đắp niềm tự hào dân tộc và lòng yêu di sản thiên nhiên đất nước."
-          ]
-        };
-      } else {
-        return {
-          format: 'essay',
-          content: `Việt Nam quê hương ta có biết bao danh lam thắng cảnh kỳ vĩ, nhưng nơi khiến em ao ước được đặt chân đến nhất chính là hang Sơn Đoòng - hang động tự nhiên lớn nhất thế giới, một kỳ quan thiên nhiên vô song ẩn sâu trong lòng di sản Phong Nha - Kẻ Bàng.\n\nNhìn từ bên ngoài, lối vào hang khuất sau những vách núi đá vôi dựng đứng và tán rừng rậm rạp, tỏa ra một luồng gió mát lạnh thổi ngược lên khiến lòng người bồi hồi háo hức. Bước chân vào bên trong hang, một không gian khổng lồ hiện ra làm em vô cùng kinh ngạc. Vòm hang cao rộng đến mức có thể chứa được cả một tòa nhà chọc trời năm mươi tầng. Những khối măng đá và thạch nhũ nghìn năm tuổi rủ xuống từ trần hang mang đủ hình thù ngộ nghĩnh, lấp lánh như những hạt kim cương dưới ánh đèn pin của đoàn thám hiểm. Điểm đặc sắc nhất của Sơn Đoòng chính là hai hố sụt khổng lồ do trần hang sụp đổ từ xa xưa. Nhờ có ánh sáng mặt trời rọi qua hố sụt, ngay trong lòng đất sâu đã hình thành một khu rừng nguyên sinh tươi tốt với những loài cây dương xỉ cổ đại xanh mướt mát rượi. Dưới lòng hang, tiếng một dòng sông ngầm chảy rầm rì, luồn lách qua đá cuội tạo nên bản nhạc du dương, hoang sơ của đất trời đại ngàn.\n\nĐược chiêm ngưỡng vẻ kỳ vĩ của Sơn Đoòng qua trang sách, em thêm tự hào về đất nước mình. Hang Sơn Đoòng mãi là biểu tượng của vẻ đẹp thiên nhiên bất tận mà mỗi người Việt Nam luôn trân quý và có ý thức giữ gìn bảo vệ.`,
-          highlights: [
-            { text: "vòm hang cao rộng đến mức có thể chứa được cả một tòa nhà chọc trời", type: "rhetorical", explanation: "Sử dụng phóng dụ so sánh kích thước giúp học sinh lớp 5 dễ hình dung độ khổng lồ của vòm hang." },
-            { text: "lấp lánh như những hạt kim cương", type: "imagery", explanation: "Hình ảnh so sánh đẹp mắt tả ánh sáng phản chiếu thạch nhũ lung linh, huyền ảo." },
-            { text: "rầm rì, xanh mướt, rậm rạp", type: "vocabulary", explanation: "Chuỗi từ láy gợi màu sắc sinh động và âm thanh đặc trưng riêng của lòng hang." }
-          ],
-          analysis: [
-            "Bố cục chuẩn mực 3 phần, cách dẫn dắt mở bài gián tiếp đầy cuốn hút và tò mò.",
-            "Trình tự miêu tả khoa học (từ bao quát lối vào đến chi tiết bên trong: vòm hang, thạch nhũ, hố sụt, sông ngầm).",
-            "Kết nối tình yêu quê hương đất nước thiết thực, khơi gợi ý thức bảo tồn thiên nhiên quốc gia."
-          ]
-        };
-      }
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Bên trong hang Sơn Đoòng vĩ đại, em như lạc vào một thế giới cổ tích kỳ ảo, nơi thiên nhiên tạc nên những khối thạch nhũ khổng lồ cao sừng sững tựa như những cột chống trời nghìn năm tuổi. Từ trần hang cao vút, ánh nắng mặt trời lọt qua những hố sụt lớn chiếu rọi xuống, đánh thức một khu rừng nguyên sinh xanh mướt mát với những loài cây dương xỉ cổ đại sinh trưởng ngay trong lòng đất sâu thẳm. Tiếng dòng sông ngầm chảy rầm rì luồn qua các kẽ đá tạo nên một thanh âm hoang sơ, huyền bí, làm lòng em tràn ngập niềm tự hào và xúc động sâu sắc trước kỳ quan thiên nhiên vô song của đất nước Việt Nam thân yêu.`
+          : `Việt Nam quê hương ta có biết bao danh lam thắng cảnh kỳ vĩ, nhưng nơi khiến em ao ước được đặt chân đến nhất chính là hang Sơn Đoòng - hang động tự nhiên lớn nhất thế giới, một kỳ quan vô song ẩn sâu trong lòng di sản Phong Nha - Kẻ Bàng.\n\nNhìn từ bên ngoài, lối vào hang khuất sau những vách núi đá vôi dựng đứng dựng đứng và tán rừng rậm rạp, tỏa ra một luồng gió mát lạnh thổi ngược lên khiến lòng người bồi hồi háo hức. Bước chân vào bên trong hang, một không gian khổng lồ hiện ra làm em vô cùng kinh ngạc. Vòm hang cao rộng đến mức có thể chứa được cả một tòa nhà chọc trời năm mươi tầng. Những khối măng đá và thạch nhũ nghìn năm tuổi rủ xuống từ trần hang lấp lánh như những hạt kim cương dưới ánh đèn pin của đoàn thám hiểm. Điểm đặc sắc nhất của Sơn Đoòng chính là hai hố sụt khổng lồ do trần hang sụp đổ từ xa xưa. Nhờ có ánh sáng mặt trời rọi qua hố sụt, ngay trong lòng đất sâu đã hình thành một khu rừng nguyên sinh tươi tốt với những loài cây dương xỉ cổ đại xanh mướt mát rượi. Dưới lòng hang, tiếng một dòng sông ngầm chảy rầm rì, luồn lách qua đá cuội tạo nên bản nhạc du dương, hoang sơ của đất trời đại ngàn.\n\nĐược chiêm ngưỡng vẻ kỳ vĩ của Sơn Đoòng qua trang sách, em thêm tự hào về đất nước mình. Hang Sơn Đoòng mãi là biểu tượng của vẻ đẹp thiên nhiên bất tận mà mỗi người Việt Nam luôn trân quý và có ý thức bảo tồn giữ gìn bảo vệ.`,
+        highlights: [
+          { text: "cao sừng sững tựa như những cột chống trời", type: "rhetorical", explanation: "So sánh thạch nhũ với cột chống trời giúp người đọc hình dung được sự đồ sộ, kỳ vĩ của hang động." },
+          { text: "rầm rì, sừng sững, xanh mướt", type: "vocabulary", explanation: "Từ láy 'rầm rì' gợi âm thanh sông ngầm trầm ấm, bí ẩn chảy mãi không ngừng." },
+          { text: "lòng em tràn ngập niềm tự hào và xúc động sâu sắc", type: "emotion", explanation: "Bày tỏ tình yêu quê hương đất nước qua sự kinh ngạc, kính phục thiên nhiên vĩ đại." }
+        ],
+        analysis: [
+          "Tả cảnh Sơn Đoòng bám sát nội dung bài học về địa danh thiên nhiên trong SGK Tiếng Việt 5.",
+          "Sử dụng từ ngữ tả hình khối, kích thước khổng lồ để tôn vinh sự kỳ vĩ của hang động.",
+          "Bài viết cấu trúc 3 phần chặt chẽ, kết bài khơi dậy ý thức gìn giữ di sản dân tộc."
+        ]
+      };
     }
 
     if (topicLower.includes('hạ long')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Ngắm nhìn vịnh Hạ Long từ trên cao, em cứ ngỡ mình đang chiêm ngưỡng một bức tranh thủy mặc khổng lồ của tạo hóa với hàng ngàn hòn đảo đá nhấp nhô trên làn nước xanh lục bảo mát rượi. Những hòn đảo đá vôi mang đủ hình dáng ngộ nghĩnh kỳ lạ, lúc giống như chú gà chọi đứng chênh vênh giữa sóng nước, lúc lại tựa như một chiếc đỉnh hương khổng lồ tĩnh lặng giữa biển khơi bao la. Gió biển thổi vi vu mang theo hơi muối mặn mà phả vào má em đầy dễ chịu. Đứng trước cảnh sắc non nước hữu tình ấy, lòng em tràn đầy niềm tự hào và tình yêu thiết tha dành cho giang sơn đất nước Việt Nam thân yêu.`,
-          highlights: [
-            { text: "nhấp nhô trên làn nước xanh lục bảo mát rượi", type: "imagery", explanation: "Sử dụng từ ngữ chỉ màu sắc 'xanh lục bảo' gợi tả độ trong xanh, quý giá và lung linh của nước biển Hạ Long." },
-            { text: "đứng chênh vênh giữa sóng nước", type: "vocabulary", explanation: "Từ láy 'chênh vênh' lột tả thế đứng độc đáo, ngộ nghĩnh của hòn Trống Mái giữa biển." },
-            { text: "như một bức tranh thủy mặc khổng lồ", type: "rhetorical", explanation: "So sánh vịnh Hạ Long với bức tranh thủy mặc tôn vinh vẻ đẹp nghệ thuật, cổ kính và kỳ vĩ do thiên nhiên tạo tác." }
-          ],
-          analysis: [
-            "Đoạn văn ngắn tả cảnh biển đảo Hạ Long sinh động thông qua các hình ảnh so sánh đặc trưng.",
-            "Sử dụng hài hòa từ láy miêu tả hình dáng và màu sắc sang trọng gợi cảm.",
-            "Khơi dậy xúc cảm tự hào về danh lam thắng cảnh nổi tiếng của đất nước Việt Nam."
-          ]
-        };
-      } else {
-        return {
-          format: 'essay',
-          content: `Trong những chuyến du lịch cùng gia đình, điểm đến để lại trong em ấn tượng sâu sắc và khơi gợi nhiều niềm tự hào nhất chính là vịnh Hạ Long - một trong những kỳ quan thiên nhiên thế giới tại quê hương Việt Nam.\n\nNhìn từ trên tàu du lịch, vịnh Hạ Long hiện ra như một bức tranh thủy mặc khổng lồ sơn thủy hữu tình. Nổi bật trên làn nước màu xanh lục bảo trong vắt là hàng ngàn hòn đảo đảo đá vôi nhấp nhô trùng điệp. Những hòn đảo đá vôi ấy đã qua hàng triệu năm kiến tạo mang đủ hình dáng kỳ thú. Kìa là hòn Trống Mái oai phong đứng chênh vênh đối mặt nhau giữa sóng nước mênh mông, kia lại là hòn Đỉnh Hương sừng sững tựa như chiếc lư hương khổng lồ dâng lên trời đất. Tàu lướt nhẹ trên sóng êm đềm, gió biển thổi vi vu qua khe núi mang theo vị mặn mòi, mát rượi của biển khơi phả vào da thịt em khoan khoái. Phía xa xa, những con thuyền buồm rực rỡ sắc màu no gió đang rẽ sóng ra khơi, vẽ nên một nhịp sống năng động mà thanh bình trên vịnh. Khi ánh hoàng hôn buông xuống, cả không gian vịnh nhuộm một màu vàng cam lộng lẫy, các hòn đảo đá như những bóng khổng lồ tĩnh lặng canh giữ biển khơi.\n\nNgắm nhìn vịnh Hạ Long tươi đẹp, em thêm yêu mến và tự hào về đất nước mình. Em tự hứa sẽ luôn tuyên truyền, bảo vệ môi trường biển để Hạ Long mãi giữ được vẻ đẹp kỳ vĩ, trong xanh cho bạn bè năm châu cùng chiêm ngưỡng.`,
-          highlights: [
-            { text: "như những bóng khổng lồ tĩnh lặng canh giữ biển khơi", type: "rhetorical", explanation: "Nghệ thuật nhân hóa và so sánh đảo đá buổi hoàng hôn tạo cảm giác oai nghiêm, thần bí bảo vệ biển trời." },
-            { text: "mặn mòi, sừng sững, trùng điệp", type: "vocabulary", explanation: "Sử dụng từ láy đặc sắc tả vị muối biển và sự hùng vĩ của các hòn đảo đá vôi." },
-            { text: "gió biển thổi vi vu... phả vào da thịt em khoan khoái", type: "emotion", explanation: "Diễn tả cảm giác dễ chịu, hòa mình vào thiên nhiên của tác giả học sinh." }
-          ],
-          analysis: [
-            "Bố cục rõ ràng 3 phần, mở bài cuốn hút và kết bài nêu rõ thông điệp bảo vệ môi trường biển.",
-            "Trình tự miêu tả sinh động: từ xa đến gần, thay đổi theo thời gian từ nắng mai đến hoàng hôn buông.",
-            "Ngôn từ giàu nhạc điệu, kết hợp so sánh và nhân hóa xuất sắc đạt điểm giỏi."
-          ]
-        };
-      }
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Ngắm nhìn vịnh Hạ Long từ trên cao, em cứ ngỡ mình đang chiêm ngưỡng một bức tranh thủy mặc khổng lồ của tạo hóa với hàng ngàn hòn đảo đá nhấp nhô trên làn nước xanh lục bảo mát rượi. Những hòn đảo đá vôi mang đủ hình dáng ngộ nghĩnh kỳ lạ, lúc giống như chú gà chọi đứng chênh vênh giữa sóng nước, lúc lại tựa như một chiếc đỉnh hương khổng lồ tĩnh lặng giữa biển khơi bao la. Gió biển thổi vi vu mang theo hơi muối mặn mà phả vào má em đầy dễ chịu. Đứng trước cảnh sắc non nước hữu tình ấy, lòng em tràn đầy niềm tự hào và tình yêu thiết tha dành cho giang sơn đất nước Việt Nam thân yêu.`
+          : `Trong những chuyến du lịch cùng gia đình, điểm đến để lại trong em ấn tượng sâu sắc và khơi gợi nhiều niềm tự hào nhất chính là vịnh Hạ Long - một trong những kỳ quan thiên nhiên thế giới tại quê hương Việt Nam.\n\nNhìn từ trên tàu du lịch, vịnh Hạ Long hiện ra như một bức tranh thủy mặc khổng lồ sơn thủy hữu tình. Nổi bật trên làn nước màu xanh lục bảo trong vắt là hàng ngàn hòn đảo đá vôi nhấp nhô trùng điệp. Những hòn đảo đá vôi ấy đã qua hàng triệu năm kiến tạo mang đủ hình dáng kỳ thú. Kìa là hòn Trống Mái oai phong đứng chênh vênh đối mặt nhau giữa sóng nước mênh mông, kia lại là hòn Đỉnh Hương sừng sững tựa như chiếc lư hương khổng lồ dâng lên trời đất. Tàu lướt nhẹ trên sóng êm đềm, gió biển thổi vi vu qua khe núi mang theo vị mặn mòi, mát rượi của biển khơi phả vào da thịt em khoan khoái. Phía xa xa, những con thuyền buồm rực rỡ sắc màu no gió đang rẽ sóng ra khơi, vẽ nên một nhịp sống năng động mà thanh bình trên vịnh. Khi ánh hoàng hôn buông xuống, cả không gian vịnh nhuộm một màu vàng cam lộng lẫy, các hòn đảo đá như những bóng khổng lồ tĩnh lặng canh giữ biển khơi.\n\nNgắm nhìn vịnh Hạ Long tươi đẹp, em thêm yêu mến và tự hào về đất nước mình. Em tự hứa sẽ luôn tuyên truyền, bảo vệ môi trường biển để Hạ Long mãi giữ được vẻ đẹp kỳ vĩ, trong xanh cho bạn bè năm châu cùng chiêm ngưỡng.`,
+        highlights: [
+          { text: "nhấp nhô trên làn nước xanh lục bảo mát rượi", type: "imagery", explanation: "Sử dụng từ ngữ chỉ màu sắc 'xanh lục bảo' gợi tả độ trong xanh, quý giá và lung linh của nước biển Hạ Long." },
+          { text: "đứng chênh vênh giữa sóng nước", type: "vocabulary", explanation: "Từ láy 'chênh vênh' lột tả thế đứng độc đáo, ngộ nghĩnh của hòn Trống Mái giữa biển." },
+          { text: "như một bức tranh thủy mặc khổng lồ", type: "rhetorical", explanation: "So sánh vịnh Hạ Long với bức tranh thủy mặc tôn vinh vẻ đẹp nghệ thuật, cổ kính và kỳ vĩ do thiên nhiên tạo tác." }
+        ],
+        analysis: [
+          "Bố cục rõ ràng 3 phần, cách mở bài gián tiếp đầy cuốn hút và kết bài nêu rõ thông điệp bảo vệ môi trường biển.",
+          "Trình tự miêu tả sinh động: từ xa đến gần, thay đổi theo thời gian từ nắng mai đến hoàng hôn buông.",
+          "Ngôn từ giàu nhạc điệu, kết hợp so sánh và nhân hóa xuất sắc đạt điểm giỏi."
+        ]
+      };
     }
   }
 
@@ -194,71 +212,41 @@ export function getDynamicMockEssay(
   // -------------------------------------------------------------
   if (type === 'cam-xuc-nhan-vat') {
     if (topicLower.includes('dế mèn')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Nhân vật Dế Mèn trong truyện "Dế Mèn phiêu lưu ký" của nhà văn Tô Hoài luôn khơi gợi trong em những cảm xúc sâu sắc và bài học quý giá về cuộc sống. Ấn tượng nhất với em chính là sự chuyển biến tích cực trong tâm hồn Mèn từ một kẻ kiêu căng, ngạo mạn làm hại Dế Choắt đáng thương trở thành một người anh hùng nghĩa hiệp, biết ăn ăn hối cải và giàu lòng nhân ái. Đọc những dòng chữ miêu tả giọt nước mắt ân hận của Mèn bên nấm mộ Dế Choắt, lòng em lại trào dâng niềm thấu cảm khôn nguôi. Chính sự hướng thiện và tinh thần ham học hỏi, khám phá thế giới rộng lớn đã biến Mèn thành một người bạn đồng hành thân thuộc, dạy em bài học làm người đáng quý.`,
-          highlights: [
-            { text: "từ một kẻ kiêu căng, ngạo mạn... trở thành người anh hùng nghĩa hiệp", type: "rhetorical", explanation: "Cấu trúc tương phản nhấn mạnh sự trưởng thành, thức tỉnh nhân cách sâu sắc của nhân vật Dế Mèn." },
-            { text: "ân hận, hối cải, ngạo mạn", type: "vocabulary", explanation: "Từ láy 'ân hận' lột tả cảm xúc hối lỗi chân thành, sâu sắc của nhân vật." },
-            { text: "lòng em lại trào dâng niềm thấu cảm khôn nguôi", type: "emotion", explanation: "Thể hiện tình cảm đồng cảm của người đọc học sinh đối với sự hối hận của nhân vật." }
-          ],
-          analysis: [
-            "Đoạn văn tập trung bày tỏ cảm nhận về sự thay đổi tính cách của Dế Mèn.",
-            "Ngôn từ diễn đạt mạch lạc, giàu cảm xúc đồng cảm sâu sắc.",
-            "Rút ra bài học đạo đức giá trị về sự khiêm tốn và biết sửa sai của tuổi thơ."
-          ]
-        };
-      } else {
-        return {
-          format: 'essay',
-          content: `Trong thế giới văn học thiếu nhi phong phú, hình ảnh chú Dế Mèn trong tác phẩm "Dế Mèn phiêu lưu ký" của nhà văn Tô Hoài luôn là nhân vật để lại trong em nhiều cảm xúc nhất. Hành trình trưởng thành đầy sóng gió của Mèn đã gieo vào lòng em những bài học quý giá về lòng khiêm tốn và tình yêu thương đồng loại.\n\nỞ những chương đầu, Dế Mèn hiện lên là một chàng dế thanh niên oai vệ nhưng vô cùng kiêu căng, hợm hĩnh. Với đôi càng mẫm bóng, những cái vuốt chân nhọn hoắt cứng ngắc, Mèn tự phụ coi mình là đệ nhất thiên hạ. Chú bắt nạt chị Cào Cào, trêu chọc anh Gọng Vó và khinh thường người hàng xóm yếu ớt Dế Choắt. Sự ngạo mạn ấy đã dẫn đến bi kịch đau lòng: trò đùa tai hại trêu chị Cốc của Mèn đã cướp đi sinh mạng của Dế Choắt đáng thương. Chứng kiến cái chết của người bạn tội nghiệp, lòng Mèn đau xót như cắt. Chú đứng lặng trước nấm mộ bạn, khóc nức nở trong sự ăn ăn hối cải muộn màng. Giọt nước mắt ấy chính là cột mốc thức tỉnh, gột rửa đi tính kiêu ngạo của Mèn. Từ đó, chú quyết chí đi ngao du thiên hạ, làm nhiều việc nghĩa hiệp giúp đỡ kẻ yếu như cứu chị Nhà Trò thoát khỏi bọn Nhện hung ác, ước mơ kết nghĩa anh em bốn bể một nhà.\n\nNhân vật Dế Mèn dạy em bài học đắt giá rằng sự kiêu ngạo ngông cuồng có thể gây hại cho người khác và cho chính mình. Em thầm cảm ơn Dế Mèn vì đã truyền cho em ngọn lửa dũng cảm, biết nhận sai và nỗ lực sửa mình để trở thành một con người tử tế, biết yêu thương mọi người xung quanh.`,
-          highlights: [
-            { text: "khóc nức nở trong sự ăn ăn hối cải muộn màng", type: "vocabulary", explanation: "Sử dụng từ ngữ gợi tả mạnh mẽ hành động và tâm trạng ân hận sâu sắc của nhân vật." },
-            { text: "đôi càng mẫm bóng, cái vuốt chân nhọn hoắt", type: "imagery", explanation: "Miêu tả ngoại hình sinh động tái hiện hình dáng oai vệ đặc trưng của dế mèn." },
-            { text: "giọt nước mắt ấy chính là cột mốc thức tỉnh, gột rửa", type: "rhetorical", explanation: "Hình ảnh ẩn dụ ví giọt nước mắt như nguồn nước thanh lọc tâm hồn kiêu ngạo." }
-          ],
-          analysis: [
-            "Bố cục rõ ràng 3 phần, cách mở bài trực tiếp giới thiệu nhân vật đầy lôi cuốn.",
-            "Tập trung phân tích sâu sự chuyển biến nội tâm của nhân vật từ tiêu cực sang tích cực.",
-            "Kết bài đúc rút bài học thực tế sâu sắc gắn liền với bản thân học sinh."
-          ]
-        };
-      }
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Nhân vật Dế Mèn trong truyện "Dế Mèn phiêu lưu ký" của nhà văn Tô Hoài luôn khơi gợi trong em những cảm xúc sâu sắc và bài học quý giá về cuộc sống. Ấn tượng nhất với em chính là sự chuyển biến tích cực trong tâm hồn Mèn từ một kẻ kiêu căng, ngạo mạn làm hại Dế Choắt đáng thương trở thành một người anh hùng nghĩa hiệp, biết ăn ăn hối cải và giàu lòng nhân ái. Đọc những dòng chữ miêu tả giọt nước mắt ân hận của Mèn bên nấm mộ Dế Choắt, lòng em lại trào dâng niềm thấu cảm khôn nguôi. Chính sự hướng thiện và tinh thần ham học hỏi, khám phá thế giới rộng lớn đã biến Mèn thành một người bạn đồng hành thân thuộc, dạy em bài học làm người đáng quý.`
+          : `Trong thế giới văn học thiếu nhi phong phú, hình ảnh chú Dế Mèn trong tác phẩm "Dế Mèn phiêu lưu ký" của nhà văn Tô Hoài luôn là nhân vật để lại trong em nhiều cảm xúc nhất. Hành trình trưởng thành đầy sóng gió của Mèn đã gieo vào lòng em những bài học quý giá về lòng khiêm tốn và tình yêu thương đồng loại.\n\nỞ những chương đầu, Dế Mèn hiện lên là một chàng dế thanh niên oai vệ nhưng vô cùng kiêu căng, hợm hĩnh. Với đôi càng mẫm bóng, những cái vuốt chân nhọn hoắt cứng ngắc, Mèn tự phụ coi mình là đệ nhất thiên hạ. Chú bắt nạt chị Cào Cào, trêu chọc anh Gọng Vó và khinh thường người hàng xóm yếu ớt Dế Choắt. Sự ngạo mạn ấy đã dẫn đến bi kịch đau lòng: trò đùa tai hại trêu chị Cốc của Mèn đã cướp đi sinh mạng của Dế Choắt đáng thương. Chứng kiến cái chết của người bạn tội nghiệp, lòng Mèn đau xót như cắt. Chú đứng lặng trước nấm mộ bạn, khóc nức nở trong sự ăn ăn hối cải muộn màng. Giọt nước mắt ấy chính là cột mốc thức tỉnh, gột rửa đi tính kiêu ngạo của Mèn. Từ đó, chú quyết chí đi ngao du thiên hạ, làm nhiều việc nghĩa hiệp giúp đỡ kẻ yếu như cứu chị Nhà Trò thoát khỏi bọn Nhện hung ác, ước mơ kết nghĩa anh em bốn bể một nhà.\n\nNhân vật Dế Mèn dạy em bài học đắt giá rằng sự kiêu ngạo ngông cuồng có thể gây hại cho người khác và cho chính mình. Em thầm cảm ơn Dế Mèn vì đã truyền cho em ngọn lửa dũng cảm, biết nhận sai và nỗ lực sửa mình để trở thành một con người tử tế, biết yêu thương mọi người xung quanh.`,
+        highlights: [
+          { text: "khóc nức nở trong sự ăn ăn hối cải muộn màng", type: "vocabulary", explanation: "Sử dụng từ ngữ gợi tả mạnh mẽ hành động và tâm trạng ân hận sâu sắc của nhân vật." },
+          { text: "đôi càng mẫm bóng, cái vuốt chân nhọn hoắt", type: "imagery", explanation: "Miêu tả ngoại hình sinh động tái hiện hình dáng oai vệ đặc trưng của dế mèn." },
+          { text: "giọt nước mắt ấy chính là cột mốc thức tỉnh, gột rửa", type: "rhetorical", explanation: "Hình ảnh ẩn dụ ví giọt nước mắt như nguồn nước thanh lọc tâm hồn kiêu ngạo." }
+        ],
+        analysis: [
+          "Bày tỏ cảm nghĩ về nhân vật Dế Mèn bám sát bài đọc trích giảng đầu năm lớp 5.",
+          "Phân tích rõ nét sự phát triển nhân cách của Mèn từ kiêu ngạo sang hướng thiện cứu người.",
+          "Rút ra bài học cuộc sống sâu sắc gắn kết cuộc sống thực tế của học sinh."
+        ]
+      };
     }
 
     if (topicLower.includes('sa-da-cô') || topicLower.includes('hạc giấy')) {
-      if (isParagraph) {
-        return {
-          format: 'paragraph',
-          content: `Hình ảnh cô bé Sa-da-cô Xa-xa-ki trong truyện "Những con hạc giấy" luôn để lại trong em nỗi xúc động sâu sắc và niềm thương cảm khôn nguôi về tội ác chiến tranh. Em vô cùng khâm phục tinh thần lạc quan, yêu đời của cô bé nhỏ khi kiên trì gấp từng cánh hạc giấy mỏng manh với niềm tin chiến thắng căn bệnh hiểm nghèo do bom nguyên tử để lại. Mặc dù Sa-da-cô đã ra đi khi ước nguyện chưa hoàn thành, nhưng 644 con hạc giấy của em cùng hàng ngàn con hạc khác do trẻ em khắp thế giới gửi đến đã trở thành biểu tượng thiêng liêng của ước mơ hòa bình, nhắc nhở em luôn trân quý cuộc sống hòa bình tươi đẹp hôm nay.`,
-          highlights: [
-            { text: "gấp từng cánh hạc giấy mỏng manh với niềm tin chiến thắng", type: "imagery", explanation: "Chi tiết tả cánh hạc mỏng manh tương phản với tinh thần kiên cường bất khuất của cô bé." },
-            { text: "xúc động sâu sắc, thương cảm khôn nguôi", type: "emotion", explanation: "Sử dụng các từ ngữ diễn tả cảm xúc thương xót chân thành đối với nạn nhân chiến tranh." },
-            { text: "trở thành biểu tượng thiêng liêng của ước mơ hòa bình", type: "rhetorical", explanation: "Phép ẩn dụ cánh hạc giấy tượng trưng cho khát vọng hòa bình bất diệt của trẻ em trên thế giới." }
-          ],
-          analysis: [
-            "Đoạn văn bày tỏ cảm xúc lay động về nhân vật lịch sử đầy nhân văn Sa-da-cô.",
-            "Cách dùng từ ngữ gợi cảm xúc thấu cảm, xót xa sâu sắc.",
-            "Hướng người đọc đến ước mơ hòa bình thế giới cao cả."
-          ]
-        };
-      } else {
-        return {
-          format: 'essay',
-          content: `Trong chương trình Tiếng Việt lớp 5, câu chuyện "Những con hạc giấy" luôn lấy đi của em nhiều nước mắt nhất. Hình ảnh cô bé Sa-da-cô Xa-xa-ki dũng cảm chiến đấu với căn bệnh hiểm nghèo đã khơi dậy trong em niềm thấu cảm sâu sắc và khát vọng hòa bình mãnh liệt.\n\nSa-da-cô là một cô bé ngây thơ, đáng yêu sống ở thành phố Hi-rô-si-ma nước Nhật. Tai họa ập xuống khi em bị nhiễm phóng xạ từ quả bom nguyên tử mà quân đội Mỹ trút xuống quê hương em. Nằm trên giường bệnh đau đớn, Sa-da-cô không hề khóc than mà luôn giữ nụ cười hồn nhiên trên môi. Khi nghe tin gấp đủ một nghìn con hạc giấy sẽ được một điều ước, em đã bắt tay vào gấp hạc với hy vọng khỏi bệnh để lại được tung tăng cắp sách đến trường cùng bạn bè. Đôi bàn tay nhỏ bé gầy guộc của em nâng niu từng mảnh giấy nhỏ, tỉ mỉ vuốt từng nếp gấp với tất cả niềm tin yêu cuộc sống. Dù cơ thể ngày một yếu đi, em vẫn kiên cường gấp được 644 con hạc trước khi nhắm mắt xuôi tay. Sự ra đi của em là lời cáo buộc đanh thép tội ác của chiến tranh hủy diệt.\n\nHình ảnh Sa-da-cô cùng những cánh hạc giấy mãi khắc sâu trong tâm trí em. Câu chuyện dạy em biết yêu hòa bình, ghét chiến tranh và khâm phục nghị lực phi thường của một cô bé đồng trang lứa. Em tự hứa sẽ học tập chăm ngoan để góp phần xây dựng một thế giới hòa bình, tươi đẹp và ngập tràn tình thương yêu.`,
-          highlights: [
-            { text: "nâng niu từng mảnh giấy nhỏ, tỉ mỉ vuốt từng nếp gấp", type: "vocabulary", explanation: "Từ láy 'tỉ mỉ' và động từ 'nâng niu' lột tả tình yêu cuộc sống và sự nâng niu hy vọng của cô bé." },
-            { text: "đôi bàn tay nhỏ bé gầy guộc", type: "imagery", explanation: "Chi tiết ngoại hình tả đôi tay gầy guộc gợi nỗi xót thương về sự tàn phá của bệnh tật do chiến tranh." },
-            { text: "là lời cáo buộc đanh thép tội ác của chiến tranh", type: "rhetorical", explanation: "Sử dụng ẩn dụ tu từ nhấn mạnh tầm quan trọng lịch sử và ý nghĩa của cái chết của nhân vật." }
-          ],
-          analysis: [
-            "Bố cục 3 phần cân đối, giàu chất thơ và cảm xúc lay động trái tim người đọc.",
-            "Tập trung phân tích hành động gấp hạc giấy biểu thị khát vọng sống bất diệt của tuổi thơ.",
-            "Truyền tải bài học ý nghĩa sâu sắc về hòa bình và tình hữu nghị quốc tế giữa trẻ em khắp thế giới."
-          ]
-        };
-      }
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Hình ảnh cô bé Sa-da-cô Xa-xa-ki trong truyện "Những con hạc giấy" luôn để lại trong em nỗi xúc động sâu sắc và niềm thương cảm khôn nguôi về tội ác chiến tranh. Em vô cùng khâm phục tinh thần lạc quan, yêu đời của cô bé nhỏ khi kiên trì gấp từng cánh hạc giấy mỏng manh với niềm tin chiến thắng căn bệnh hiểm nghèo do bom nguyên tử để lại. Mặc dù Sa-da-cô đã ra đi khi ước nguyện chưa hoàn thành, nhưng 644 con hạc giấy của em cùng hàng ngàn con hạc khác do trẻ em khắp thế giới gửi đến đã trở thành biểu tượng thiêng liêng của ước mơ hòa bình, nhắc nhở em luôn trân quý cuộc sống hòa bình tươi đẹp hôm nay.`
+          : `Trong chương trình Tiếng Việt lớp 5, câu chuyện "Những con hạc giấy" luôn lấy đi của em nhiều nước mắt nhất. Hình ảnh cô bé Sa-da-cô Xa-xa-ki dũng cảm chiến đấu với căn bệnh hiểm nghèo đã khơi dậy trong em niềm thấu cảm sâu sắc và khát vọng hòa bình mãnh liệt.\n\nSa-da-cô là một cô bé ngây thơ, đáng yêu sống ở thành phố Hi-rô-si-ma nước Nhật. Tai họa ập xuống khi em bị nhiễm phóng xạ từ quả bom nguyên tử mà quân đội Mỹ trút xuống quê hương em. Nằm trên giường bệnh đau đớn, Sa-da-cô không hề khóc than mà luôn giữ nụ cười hồn nhiên trên môi. Khi nghe tin gấp đủ một nghìn con hạc giấy sẽ được một điều ước, em đã bắt tay vào gấp hạc với hy vọng khỏi bệnh để lại được tung tăng cắp sách đến trường cùng bạn bè. Đôi bàn tay nhỏ bé gầy guộc của em nâng niu từng mảnh giấy nhỏ, tỉ mỉ vuốt từng nếp gấp với tất cả niềm tin yêu cuộc sống. Dù cơ thể ngày một yếu đi, em vẫn kiên cường gấp được 644 con hạc trước khi nhắm mắt xuôi tay. Sự ra đi của em là lời cáo buộc đanh thép tội ác của chiến tranh hủy diệt.\n\nHình ảnh Sa-da-cô cùng những cánh hạc giấy mãi khắc sâu trong tâm trí em. Câu chuyện dạy em biết yêu hòa bình, ghét chiến tranh và khâm phục nghị lực phi thường của một cô bé đồng trang lứa. Em tự hứa sẽ học tập chăm ngoan để góp phần xây dựng một thế giới hòa bình, tươi đẹp và ngập tràn tình thương yêu.`,
+        highlights: [
+          { text: "nâng niu từng mảnh giấy nhỏ, tỉ mỉ vuốt từng nếp gấp", type: "vocabulary", explanation: "Từ láy 'tỉ mỉ' và động từ 'nâng niu' lột tả tình yêu cuộc sống và sự nâng niu hy vọng của cô bé." },
+          { text: "đôi bàn tay nhỏ bé gầy guộc", type: "imagery", explanation: "Chi tiết ngoại hình tả đôi tay gầy guộc gợi nỗi xót thương về sự tàn phá của bệnh tật do chiến tranh." },
+          { text: "là lời cáo buộc đanh thép tội ác của chiến tranh", type: "rhetorical", explanation: "Sử dụng ẩn dụ tu từ nhấn mạnh tầm quan trọng lịch sử và ý nghĩa của cái chết của nhân vật." }
+        ],
+        analysis: [
+          "Bày tỏ cảm xúc chân thành về nhân vật lịch sử chiến tranh Sa-da-cô.",
+          "Ngôn từ hàm súc, giàu tính biểu cảm cao quý hướng đến ước mơ hòa bình.",
+          "Cấu trúc cân đối, dẫn chứng lịch sử chính xác phù hợp văn mẫu lớp 5."
+        ]
+      };
     }
   }
 
@@ -270,20 +258,72 @@ export function getDynamicMockEssay(
       return {
         format: isParagraph ? 'paragraph' : 'essay',
         content: isParagraph
-          ? `Câu chuyện "Thanh âm của gió" mang lại cho em những cảm xúc vô cùng ngọt ngào và ấm áp về tình bạn và vẻ đẹp của thiên nhiên quê hương. Chuyện kể về chú Thỏ con tai dài cùng các bạn nhỏ đáng yêu trong thung lũng cùng nhau đi tìm kiếm và lắng nghe tiếng gió rì rào qua khe đá, qua ngọn cây. Lắng nghe câu chuyện, lòng em trào dâng cảm giác yên bình tựa như được nằm giữa đồng cỏ xanh ngát rực rỡ nắng mai. Bài học về sự thấu cảm, mở lòng lắng nghe âm thanh kỳ diệu quanh mình từ truyện đã dạy em biết trân trọng những điều bình dị nhất trong cuộc sống mỗi ngày.`
-          : `Trong các bài học Tiếng Việt 5 mới, câu chuyện "Thanh âm của gió" luôn mang đến cho em những xúc cảm êm đềm và bài học nhân văn sâu sắc nhất. Tác phẩm đã mở ra trước mắt em một thế giới tuổi thơ trong trẻo hòa quyện cùng vẻ đẹp kỳ diệu của thiên nhiên quê hương.\n\nCâu chuyện đưa người đọc đến với thung lũng lộng gió xinh đẹp, nơi có nhóm bạn Thỏ tai dài, Cừu non và Bò già cùng chung sống. Ban đầu, gió rít ù ù qua khe núi làm các bạn lo lắng, hoang sợ. Thế nhưng, nhờ sự tinh tế và mở lòng của Thỏ con, muông thú đã cùng nhau nhắm mắt lắng nghe gió bằng cả tâm hồn. Phép màu đã xảy ra khi mọi người nhận ra tiếng gió rì rào qua vách đá tựa như tiếng trống trận dũng mãnh, xào xạc qua kẽ lá dịu êm như tiếng mẹ ru ngủ ấm áp. Đọc đến đây, em cảm thấy vô cùng xúc động trước sự thay đổi kỳ diệu đó. Tình bạn gắn kết của muôn loài hòa cùng bản hòa ca của gió trời đã tạo nên bức tranh quê hương thanh bình, đáng yêu vô cùng.\n\n"Thanh âm của gió" không chỉ làm giàu thêm trí tưởng tượng phong phú của em mà còn bồi đắp lòng thấu cảm, yêu mến thiên nhiên hoang dã quanh mình. Truyện nhắc nhở em hãy chậm lại để lắng nghe và trân quý những điều tuyệt diệu nhỏ bé của cuộc sống.`,
+          ? `Câu chuyện "Thanh âm của gió" mang lại cho em những cảm xúc vô cùng ngọt ngào và ấm áp về tình bạn và vẻ đẹp của thiên nhiên quê hương. Chuyện kể về bé Bống tinh nghịch cùng anh trai chăn trâu bên suối, phát hiện ra trò chơi nghe gió rì rào qua khe đá, xạc xào qua ngọn tre bằng cách bịt tai liên tục. Lắng nghe câu chuyện, lòng em trào dâng cảm giác yên bình tựa như được nằm giữa đồng cỏ xanh ngát rực rỡ nắng mai. Bài học về sự thấu cảm mở lòng lắng nghe âm thanh kì diệu quanh mình từ truyện đã dạy em biết trân trọng những điều bình dị nhất của tự nhiên.`
+          : `Trong các bài học Tiếng Việt 5 mới, câu chuyện "Thanh âm của gió" luôn mang đến cho em những xúc cảm êm đềm và bài học nhân văn sâu sắc nhất. Tác phẩm đã mở ra trước mắt em một thế giới tuổi thơ trong trẻo hòa quyện cùng vẻ đẹp kỳ diệu của thiên nhiên quê hương.\n\nCâu chuyện đưa người đọc đến với buổi chiều chăn trâu bên dòng suối nhỏ của bé Bống, người anh trai và nhóm bạn Điệp, Văn, Thành. Sự phát hiện tình cờ của bé Bống về trò chơi bịt tai rồi mở ra liên tục đã khơi màn cho một cuộc phiêu lưu thính giác vô cùng lý thú. Nhờ đó, cả nhóm bạn nhận ra tiếng gió rì rào qua vách đá tựa như tiếng trống trận dũng mãnh, xào xạc qua kẽ tre dịu êm như tiếng mẹ ru ngủ ấm áp. Đọc đến đây, em cảm thấy vô cùng xúc động trước thế giới tưởng tượng hồn nhiên đó. Buổi tối kể lại cho bố nghe, cả gia đình cùng bịt tai nghe gió dưới ánh sáng ấm áp càng làm tình thương thân yêu bừng sáng.\n\n"Thanh âm của gió" không chỉ làm giàu thêm trí tưởng tượng phong phú của em mà còn bồi đắp lòng thấu cảm, yêu mến thiên nhiên hoang dã quanh mình. Truyện nhắc nhở em hãy chậm lại để lắng nghe và trân quý những điều tuyệt diệu nhỏ bé của cuộc sống.`,
         highlights: [
           { text: "rì rào qua vách đá tựa như tiếng trống trận", type: "rhetorical", explanation: "Phép so sánh tiếng gió với tiếng trống trận giúp âm thanh trở nên hùng vĩ, sống động kỳ diệu." },
           { text: "êm đềm, ngọt ngào, xào xạc", type: "vocabulary", explanation: "Sử dụng từ láy giàu nhạc tính khơi gợi thính giác của người đọc một cách tự nhiên." },
           { text: "lòng em trào dâng cảm giác yên bình", type: "emotion", explanation: "Bộc lộ cảm nhận cảm xúc chân thành, thư thái khi đọc tác phẩm văn học thiếu nhi hay." }
         ],
         analysis: [
-          "Bày tỏ cảm xúc sâu lắng về một câu chuyện văn học thiếu nhi trong chương trình 2018.",
-          "Phân tích xuất sắc các chi tiết âm thanh và cảm xúc của nhân vật để làm sáng tỏ chủ đề tác phẩm.",
-          "Bài học giáo dục đạo đức nhẹ nhàng về lòng thấu cảm và sự gắn kết con người với tự nhiên."
+          "Bày tỏ cảm nghĩ về tác phẩm 'Thanh âm của gió' trung thực với các nhân vật và cốt truyện trong SGK lớp 5.",
+          "Mô tả sinh động hoạt động lắng nghe và liên tưởng tiếng gió của trẻ thơ chăn trâu.",
+          "Rút ra giá trị triết lý nhân văn cao quý về lòng trân trọng cuộc sống và tình cảm gia đình."
         ]
       };
     }
+
+    if (topicLower.includes('cánh đồng hoa')) {
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Câu chuyện "Cánh đồng hoa" để lại trong em niềm khâm phục to lớn trước sáng kiến trồng hoa đầy ý nghĩa của cô bé Mư Hoa cùng các bạn Ja Ka, Ja Prok và Mư Nhơ. Trước nguy cơ đồng cỏ quê hương tươi đẹp biến thành bãi rác ô nhiễm, các bạn nhỏ đã dũng cảm dọn dẹp và phủ kín đất trống bằng những hạt giống hoa rực rỡ màu sắc. Sự chung sức bền bỉ của các bạn và sự giúp đỡ nhiệt tình của cả buôn làng đã gặt hái quả ngọt sau ba tháng chăm sóc. Câu chuyện là bài học quý giá, truyền cho em cảm hứng sâu sắc về tinh thần đoàn kết và ý thức trách nhiệm làm đẹp môi trường sống quê hương.`
+          : `Trong các tác phẩm văn học đã học học kì này, câu chuyện "Cánh đồng hoa" luôn đọng lại trong em những rung động sâu sắc nhất. Tác phẩm đã kể lại một hành trình lao động tuyệt vời của tình bạn và ý chí bảo vệ quê hương xanh - sạch - đẹp.\n\nMở đầu câu chuyện là khung cảnh thanh bình trên đồng cỏ đầu làng của bốn người bạn Ja Ka, Mư Hoa, Ja Prok và Mư Nhơ. Nhưng khi bãi rác xuất hiện bốc mùi khó ngửi, Mư Hoa đã nảy ra ý tưởng biến đồng cỏ hoang tàn thành cánh đồng hoa rực rỡ để không ai nỡ vứt rác tại đây nữa. Đọc đến quá trình các bạn nhỏ cuốc đất, gieo hạt, nhổ cỏ dại dưới nắng hè nóng bức, em vô cùng khâm phục ý chí bền bỉ của các bạn. Hành động đẹp ấy lan tỏa sâu sắc khiến các cô bác trong buôn làng mang cuốc xẻng ra phụ giúp đắc lực. Kết quả ngọt ngào hiện ra sau ba tháng cặm cụi, đồng hoa rực rỡ sắc màu bừng nở trong tiếng reo vui của muông thú và sự yêu thích của khách tham quan.\n\nCâu chuyện "Cánh đồng hoa" truyền tải thông điệp sâu sắc rằng mỗi hành động nhỏ bé nếu có sự đồng lòng, kiên trì đều có thể tạo nên những điều kỳ diệu cho cộng đồng. Em tự hứa sẽ noi gương các bạn nhỏ bảo vệ cảnh quan sạch đẹp quanh mình.`,
+        highlights: [
+          { text: "cánh đồng hoa rực rỡ sắc màu bừng nở", type: "imagery", explanation: "Hình ảnh vườn hoa nở rộ rực rỡ biểu tượng cho thành công mỹ mãn của tinh thần đoàn kết." },
+          { text: "cặm cụi, bền bỉ, nóng bức", type: "vocabulary", explanation: "Từ láy 'cặm cụi' chỉ tinh thần lao động không mỏi mệt của các bạn nhỏ buôn làng." },
+          { text: "em vô cùng khâm phục ý chí bền bỉ", type: "emotion", explanation: "Bày tỏ xúc cảm kính phục, yêu mến tinh thần bảo vệ quê hương của các bạn." }
+        ],
+        analysis: [
+          "Bày tỏ cảm xúc đầy đủ các nhân vật Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ theo đúng cốt truyện SGK TV 5.",
+          "Phân tích rõ sự chuyển dịch từ bãi rác ô nhiễm thành vườn hoa du lịch nhờ sức mạnh đoàn kết.",
+          "Văn phong biểu cảm trong sáng giàu tính giáo dục môi trường."
+        ]
+      };
+    }
+
+    if (topicLower.includes('hộp quà') || topicLower.includes('thiên thanh')) {
+      return {
+        format: isParagraph ? 'paragraph' : 'essay',
+        content: isParagraph
+          ? `Câu chuyện "Hộp quà màu thiên thanh" đã gieo vào lòng em niềm xúc động sâu sắc về tình thầy trò thiêng liêng cao quý. Chuyện kể về món quà bí mật của lớp học dành tặng cô giáo chủ nhiệm nhân ngày tổng kết năm học: một chiếc hộp màu xanh thiên thanh chứa đựng 35 bức thư tâm tình của các bạn nhỏ. Nhìn hình ảnh bạn Tân nắn nót viết thư hứa học tốt để tri ân sự thấu cảm, bao dung của cô khi Tân đi học muộn do bẻ ngô giúp mẹ, lòng em lại trào dâng nỗi nghẹn ngào ấm áp. Hộp quà giản dị ấy chứa đựng bài học lớn lao về lòng biết ơn và sự ghi nhận nỗ lực rèn luyện của tuổi học trò.`
+          : `Trong các bài đọc cuối năm lớp 5, câu chuyện "Hộp quà màu thiên thanh" để lại trong em những xúc cảm ấm áp và lòng biết ơn thầy cô giáo sâu sắc nhất. Tác phẩm đã ngợi ca mối quan hệ thầy trò gắn bó yêu thương qua một món quà tri ân vô cùng độc đáo.\n\nCâu chuyện bắt đầu từ kế hoạch bí mật của hai bạn Quang và Huệ rủ bạn Tân viết thư gửi tặng cô giáo chủ nhiệm trước lễ tổng kết năm học. Đọc câu chuyện, em vô cùng xúc động khi theo dõi dòng ký ức của Tân viết trong bức thư. Đó là kỷ niệm Tân đi học trễ do mải bẻ ngô giúp mẹ dưới đồng sâu. Thay vì trách phạt nặng nề, cô giáo đã ân cần khuyên nhủ bằng tình yêu thương trìu mến rộng mở, giúp Tân tự giác nhận lỗi và nỗ lực sửa đổi dậy sớm học bài. Ngày lễ tổng kết, chiếc hộp quà màu thiên thanh chứa 35 bức thư chân tình của các bạn học sinh được trao tận tay cô giáo trong sự xúc động nghẹn ngào của cô. Giây phút ấy, em cảm nhận được sợi dây kết nối thiêng liêng giữa người lái đò thầm lặng và bầy em nhỏ thơ ngây.\n\n"Hộp quà màu thiên thanh" đã đánh thức lòng biết ơn sâu sắc trong trái tim em. Em thầm tự hứa sẽ nỗ lực học tập rèn luyện thật tốt để dâng tặng thầy cô những bông hoa điểm 10 rực rỡ nhất, xứng đáng với công ơn giáo dục cao cả của thầy cô.`,
+        highlights: [
+          { text: "cô giáo đã ân cần khuyên nhủ bằng tình yêu thương trìu mến", type: "emotion", explanation: "Từ ngữ bộc lộ sự bao dung, nhân hậu của cô giáo chủ nhiệm hiền từ." },
+          { text: "sợi dây kết nối thiêng liêng giữa người lái đò thầm lặng", type: "rhetorical", explanation: "Ẩn dụ ví cô giáo như người lái đò thầm lặng đưa đò sang sông mang đầy tính nhân văn biết ơn." },
+          { text: "thiên thanh, nắn nót, nghẹn ngào", type: "vocabulary", explanation: "Sử dụng các từ láy và tính từ màu sắc gợi xúc cảm tri ân chân thành, sâu lắng." }
+        ],
+        analysis: [
+          "Bày tỏ cảm xúc câu chuyện đúng chuẩn các nhân vật Tân, Quang, Huệ và cô giáo chủ nhiệm trong SGK Tập 2.",
+          "Phân tích chi tiết ý nghĩa chiếc hộp màu thiên thanh chứa thư tâm tình thay cho quà cáp vật chất.",
+          "Kết bài liên hệ trách nhiệm bản thân học sinh thiết thực, sâu sắc."
+        ]
+      };
+    }
+  }
+
+  // Helper to convert essay object to paragraph format if requested
+  function convertEssayToParagraph(essay: SampleEssayResult): SampleEssayResult {
+    // Simplify format and strip newlines from content to make it a single paragraph
+    const singleParagraphContent = essay.content
+      .replace(/\n\n/g, ' ')
+      .replace(/\n/g, ' ');
+    return {
+      format: 'paragraph',
+      content: singleParagraphContent,
+      highlights: essay.highlights,
+      analysis: essay.analysis
+    };
   }
 
   // -------------------------------------------------------------
@@ -431,7 +471,7 @@ export function getDynamicMockEssay(
     'neu-y-kien': {
       essay: {
         format: 'essay',
-        content: `Trong cuộc sống hiện đại ngày nay, sách vẫn luôn là kho tàng tri thức vô giá của nhân loại. Vì vậy, em hoàn toàn đồng tình với ý kiến cho rằng việc xây dựng thói quen đọc sách mỗi ngày là vô cùng cần thiết đối với học sinh chúng ta.\n\nTrước hết, sách cung cấp một lượng tri thức khổng lồ về mọi lĩnh vực xung quanh cuộc sống từ khoa học, lịch sử đến nghệ thuật, giúp học sinh mở rộng chân trời hiểu biết mà không cần đi xa. Thứ hai, đọc sách thường xuyên giúp bồi dưỡng tâm hồn tinh tế, rèn luyện sự thấu cảm và lòng nhân ái thông qua những câu chuyện nhân văn sâu sắc. Trái lại, những người lười đọc sách, chỉ phụ thuộc vào trò chơi điện tử thường bị hạn chế về vốn từ vựng và giảm khả năng tập trung sâu sắc. Để thói quen đọc sách đạt kết quả tốt nhất, mỗi học sinh hãy bắt đầu chọn những quyển sách phù hợp lứa tuổi, dành ra mười lăm đến ba mươi phút đọc sách trước khi đi ngủ mỗi ngày.\n\nTóm lại, đọc sách chính là chìa khóa mở ra cánh cửa tương lai tươi đẹp. Xây dựng văn hóa đọc từ hôm nay sẽ giúp học sinh chúng ta ngày một hoàn thiện bản thân, trở thành những công dân có ích cho xã hội.`,
+        content: `Trong cuộc sống hiện đại ngày nay, sách vẫn luôn là kho tàng tri thức vô giá của nhân loại. Vì vậy, em hoàn toàn đồng tình với ý kiến cho rằng việc xây dựng thói quen đọc sách mỗi ngày là vô cùng cần thiết đối với học sinh chúng ta.\n\nTrước hết, sách cung cấp một lượng tri thức khổng lồ về mọi lĩnh vực xung quanh cuộc sống từ khoa học, lịch sử đến nghệ thuật, giúp học sinh mở rộng chân trời hiểu biết mà không cần đi xa. Thứ hai, đọc sách thường xuyên giúp bồi dưỡng tâm hồn tinh tế, rằn luyện sự thấu cảm và lòng nhân ái thông qua những câu chuyện nhân văn sâu sắc. Trái lại, những người lười đọc sách, chỉ phụ thuộc vào trò chơi điện tử thường bị hạn chế về vốn từ vựng và giảm khả năng tập trung sâu sắc. Để thói quen đọc sách đạt kết quả tốt nhất, mỗi học sinh hãy bắt đầu chọn những quyển sách phù hợp lứa tuổi, dành ra mười lăm đến ba mươi phút đọc sách trước khi đi ngủ mỗi ngày.\n\nTóm lại, đọc sách chính là chìa khóa mở ra cánh cửa tương lai tươi đẹp. Xây dựng văn hóa đọc từ hôm nay sẽ giúp học sinh chúng ta ngày một hoàn thiện bản thân, trở thành những công dân có ích cho xã hội.`,
         highlights: [
           { text: "đọc sách chính là chìa khóa mở ra cánh cửa tương lai", type: "rhetorical", explanation: "Phép ẩn dụ ví sách với chiếc chìa khóa giúp nhấn mạnh tầm quan trọng quyết định của việc đọc sách đối với tương lai trẻ em." },
           { text: "lười đọc sách, chỉ phụ thuộc vào trò chơi điện tử", type: "rhetorical", explanation: "Lập luận so sánh phản đề để chứng minh tác hại của việc lười đọc sách." },

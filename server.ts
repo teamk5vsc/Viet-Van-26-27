@@ -1022,6 +1022,22 @@ Yêu cầu về chất lượng bài viết:
 4. Nếu định dạng là 'paragraph' (đoạn văn), viết một đoạn văn liền mạch duy nhất không xuống dòng, tập trung thể hiện sâu sắc một khía cạnh nổi bật.
 5. Nếu có dàn ý của học sinh ('outline') kèm theo, hãy lấy cảm hứng viết bám sát theo các ý chính trong dàn ý đó nhưng nâng tầm ngôn từ lên loại giỏi để học sinh noi theo.
 
+Tài liệu tham khảo bắt buộc về sách giáo khoa Tiếng Việt 5 mới (Bộ Kết nối tri thức - KNTT):
+- Dạng Kể chuyện sáng tạo:
+  + "Thanh âm của gió" (Nhân vật chăn trâu gồm: Bống, anh trai của Bống, Điệp, Văn, Thành; chơi trò bịt tai nghe tiếng gió rì rào qua khe đá, xào xạc qua kẽ tre)
+  + "Cánh đồng hoa" (Nhân vật gồm: Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ cùng dọn rác và trồng hoa hướng dương, cúc bách nhật trên đồng cỏ đầu buôn làng)
+  + "Hộp quà màu thiên thanh" (Nhân vật gồm: Tân, Quang, Huệ viết thư tri ân chứa trong hộp màu xanh thiên thanh tặng cô giáo chủ nhiệm)
+  + "Giỏ hoa tháng Năm" (Nhân vật kể chuyện tri ân thầy cô giáo)
+  + "Những con hạc giấy" (Cô bé Sa-da-cô và ước mong hòa bình qua 1000 con hạc giấy)
+- Dạng Văn tả cảnh:
+  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
+  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
+  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
+  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
+  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
+
+Khi viết bài mẫu cho đề tài "${topic}", nếu đề tài liên quan đến các tác phẩm trong danh sách tham chiếu trên, bạn BẮT BUỘC phải sử dụng chính xác các tên nhân vật, địa danh và tình tiết cốt truyện tương ứng để bài mẫu chân thực và hoàn toàn thống nhất với sách giáo khoa lớp 5.
+
 Chủ đề: "${topic}"
 Dạng bài tương ứng: ${type}
 Định dạng yêu cầu: ${format === 'essay' ? 'Bài văn hoàn chỉnh' : 'Đoạn văn ngắn'}
