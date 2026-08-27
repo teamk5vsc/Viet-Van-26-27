@@ -4,6 +4,8 @@ import fs from 'fs';
 import os from 'os';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
+import { getDynamicMockEssay } from './src/data/mockEssays';
+
 
 dotenv.config();
 
@@ -591,6 +593,7 @@ function getMockOutline(topic: string, type: string) {
 
 
 function getMockEssay(topic: string, type: string, format: 'essay' | 'paragraph') {
+  return getDynamicMockEssay(topic, type, format);
   const cleanTopic = topic || 'Tả cảnh đồi chè quê em';
   
   const mockDatabase: Record<string, {
@@ -1005,7 +1008,7 @@ app.post('/api/gemini/essay', async (req, res) => {
   const clientApiKey = req.headers['x-api-key'] as string | undefined;
   const client = getGeminiClient(clientApiKey);
   if (!client) {
-    return res.json(getMockEssay(topic, type, format || 'essay'));
+    return res.json(getDynamicMockEssay(topic, type, format || 'essay'));
   }
 
   try {
@@ -1055,7 +1058,7 @@ BẮT BUỘC TRẢ VỀ kết quả duy nhất dưới dạng một đối tư�
     if (hasApiKey) {
       return res.status(500).json({ error: `Gemini API Error: ${err.message || err}` });
     }
-    return res.status(200).json(getMockEssay(topic, type, format || 'essay'));
+    return res.status(200).json(getDynamicMockEssay(topic, type, format || 'essay'));
   }
 });
 

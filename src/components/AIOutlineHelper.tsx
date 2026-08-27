@@ -10,9 +10,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import AIChatScaffold from './AIChatScaffold';
 import SentenceTransformer from './SentenceTransformer';
 import { callGeminiApiDirectly } from '../utils/geminiDirect';
+import { getDynamicMockEssay } from '../data/mockEssays';
+
 
 function getClientMockEssay(topic: string, type: string, format: 'essay' | 'paragraph'): SampleEssayResult {
+  return getDynamicMockEssay(topic, type, format);
   const cleanTopic = topic || 'Tả cảnh đồi chè quê em';
+
   
   const mockDatabase: Record<string, {
     essay: SampleEssayResult;
