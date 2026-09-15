@@ -132,6 +132,8 @@ export default function App() {
   // this device is teacher-authenticated or has an already-verified student session).
   const [studentRoster, setStudentRoster] = useState<{ className: string; schoolName?: string; students: StudentEntry[] } | null>(null);
   const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [classCodeStatus, setClassCodeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isConnectingClassCode, setIsConnectingClassCode] = useState(false);
   const [currentStudent, setCurrentStudent] = useState<StudentEntry | null>(() => {
     const savedId = localStorage.getItem('vm5_current_student');
     const savedClass = localStorage.getItem('vm5_class_info');
@@ -565,6 +567,33 @@ export default function App() {
     }
   };
 
+  // Connects to a class using a teacher-provided code, fetching only the PIN-free roster.
+  const handleConnectClassCode = async (code: string) => {
+    if (!code.trim() || isConnectingClassCode) return;
+    setIsConnectingClassCode(true);
+    setClassCodeStatus(null);
+    try {
+      const res = await fetch(`/api/sync/roster?teacherId=${code.trim()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.classInfo) {
+          setTeacherId(code.trim());
+          localStorage.setItem('vm5_teacher_id', code.trim());
+          setStudentRoster(data.classInfo);
+          setClassCodeStatus({ type: 'success', message: 'Kết nối lớp học thành công! 🎉 Em hãy chọn tên của mình nhé.' });
+        } else {
+          setClassCodeStatus({ type: 'error', message: 'Không tìm thấy lớp học với mã này. Hãy hỏi cô giáo xem có đúng mã không nhé.' });
+        }
+      } else {
+        setClassCodeStatus({ type: 'error', message: 'Không kết nối được với máy chủ. Vui lòng thử lại.' });
+      }
+    } catch (err) {
+      setClassCodeStatus({ type: 'error', message: 'Lỗi kết nối mạng.' });
+    } finally {
+      setIsConnectingClassCode(false);
+    }
+  };
+
   const renderStudentPicker = () => {
     // PIN-free roster used purely to render names/avatars until this device authenticates.
     const rosterSource = classInfo || studentRoster;
@@ -596,34 +625,27 @@ export default function App() {
                   type="text"
                   placeholder="Mã lớp học (ví dụ: t_abc123)..."
                   id="student-sync-code-input"
-                  className="w-full text-center text-xs font-mono py-2.5 px-3 rounded-xl border border-neutral-200 focus:outline-none focus:border-amber-400 bg-neutral-50 focus:bg-white transition"
-                />
-                <button
-                  onClick={async () => {
-                    const input = (document.getElementById('student-sync-code-input') as HTMLInputElement)?.value?.trim();
-                    if (!input) return;
-                    try {
-                      const res = await fetch(`/api/sync/roster?teacherId=${input}`);
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (data.success && data.classInfo) {
-                          setTeacherId(input);
-                          localStorage.setItem('vm5_teacher_id', input);
-                          setStudentRoster(data.classInfo);
-                          alert('Kết nối lớp học thành công! 🎉 Em hãy chọn tên của mình nhé.');
-                        } else {
-                          alert('Không tìm thấy lớp học với mã này. Hãy hỏi cô giáo xem có đúng mã không nhé.');
-                        }
-                      } else {
-                        alert('Không kết nối được với máy chủ. Vui lòng thử lại.');
-                      }
-                    } catch (err) {
-                      alert('Lỗi kết nối mạng.');
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleConnectClassCode((e.target as HTMLInputElement).value);
                     }
                   }}
-                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer"
+                  className="w-full text-center text-xs font-mono py-2.5 px-3 rounded-xl border border-neutral-200 focus:outline-none focus:border-amber-400 bg-neutral-50 focus:bg-white transition"
+                />
+                {classCodeStatus && (
+                  <p className={`text-[11px] font-medium ${classCodeStatus.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {classCodeStatus.message}
+                  </p>
+                )}
+                <button
+                  onClick={() => {
+                    const input = (document.getElementById('student-sync-code-input') as HTMLInputElement)?.value || '';
+                    handleConnectClassCode(input);
+                  }}
+                  disabled={isConnectingClassCode}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  Kết nối lớp học 🔗
+                  {isConnectingClassCode ? 'Đang kết nối...' : 'Kết nối lớp học 🔗'}
                 </button>
               </div>
             </div>
@@ -671,27 +693,20 @@ export default function App() {
                   );
                 })}
               </div>
-              <div className="pt-2.5 border-t border-neutral-100 flex justify-center">
+              <div className="pt-2.5 border-t border-neutral-100 flex flex-col items-center gap-1.5">
+                {classCodeStatus && (
+                  <p className={`text-[11px] font-medium ${classCodeStatus.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {classCodeStatus.message}
+                  </p>
+                )}
                 <button
                   onClick={() => {
                     const newCode = prompt('Nhập mã đồng bộ lớp học do cô giáo cung cấp (ví dụ: t_abc123):');
-                    if (!newCode || !newCode.trim()) return;
-                    const cleanCode = newCode.trim();
-                    fetch(`/api/sync/roster?teacherId=${cleanCode}`)
-                      .then(res => res.json())
-                      .then(data => {
-                        if (data.success && data.classInfo) {
-                          setTeacherId(cleanCode);
-                          localStorage.setItem('vm5_teacher_id', cleanCode);
-                          setStudentRoster(data.classInfo);
-                          alert('Đã kết nối lớp học mới thành công! 🎉');
-                        } else {
-                          alert('Không tìm thấy lớp học với mã này. Hãy kiểm tra lại.');
-                        }
-                      })
-                      .catch(() => alert('Lỗi kết nối mạng.'));
+                    if (!newCode) return;
+                    handleConnectClassCode(newCode);
                   }}
-                  className="text-[11px] text-amber-600 hover:text-amber-700 font-bold transition flex items-center space-x-1 cursor-pointer bg-transparent border-none py-1"
+                  disabled={isConnectingClassCode}
+                  className="text-[11px] text-amber-600 hover:text-amber-700 font-bold transition flex items-center space-x-1 cursor-pointer bg-transparent border-none py-1 disabled:opacity-50"
                 >
                   <span>🔗 Kết nối mã lớp học khác</span>
                 </button>
@@ -901,8 +916,9 @@ export default function App() {
         
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-4xl mx-auto w-full">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0.6, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25 }}
             className="text-center mb-8 space-y-4"
           >
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 shadow-xl text-5xl mb-2 select-none">
@@ -928,6 +944,7 @@ export default function App() {
               className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl border border-amber-100 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between text-left relative overflow-hidden group"
               onClick={() => {
                 setPickerStep('select');
+                setClassCodeStatus(null);
                 setShowStudentPicker(true);
               }}
             >
@@ -1170,6 +1187,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     setPickerStep('select');
+                    setClassCodeStatus(null);
                     setShowStudentPicker(true);
                   }}
                   className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm border border-white/30 py-1.5 px-3 rounded-xl hover:bg-white/30 transition cursor-pointer"
