@@ -655,7 +655,7 @@ export default function TeacherDashboard({
                         <span className="text-base">{s.avatar}</span>
                         <span className="text-[11px] font-semibold text-neutral-700 truncate max-w-[100px]">{s.name}</span>
                       </div>
-                      <span className="text-sm font-mono font-black text-amber-600 tracking-widest">{s.pin}</span>
+                      <span className="text-sm font-mono font-black text-amber-600 tracking-widest">{s.pin || '----'}</span>
                     </div>
                   ))}
                 </div>

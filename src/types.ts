@@ -54,6 +54,7 @@ export interface GradeResult {
     nextSteps: string;
   };
   checklist: ChecklistItem[]; // specific to the essay type
+  isSimulated?: boolean; // true when this grade came from the offline/mock engine, not real AI
 }
 
 export interface GrowthComparison {
@@ -67,6 +68,7 @@ export interface GrowthComparison {
     reminders: string;   // Working targets remaining
     growthWords: string; // A message summarizing growth of style (Before vs After)
   };
+  isSimulated?: boolean; // true when this comparison came from the offline/mock engine, not real AI
 }
 
 export interface SampleHighlight {
@@ -163,7 +165,9 @@ export interface StudentEntry {
   id: string;
   name: string;
   avatar: string;
-  pin: string; // 4-digit PIN for student verification
+  // Only present when fetched by an already-authenticated teacher/student session
+  // (see /api/sync/roster vs /api/sync/class-info) — never trust this being set.
+  pin?: string;
 }
 
 export interface StudentGroup {

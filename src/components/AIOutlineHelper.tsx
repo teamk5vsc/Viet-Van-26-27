@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EssayType, GradeResult, GrowthComparison, OutlineSubmission, StudentEntry, SampleEssayResult } from '../types';
+import { EssayType, GradeResult, GrowthComparison, OutlineSubmission, StudentEntry, SampleEssayResult, SampleHighlight } from '../types';
 import { SYLLABUS_DATA } from '../data/syllabus';
 import { 
   Sparkles, Pencil, ArrowRight, CheckCircle2, ChevronRight, Play, RefreshCw, 
@@ -9,7 +9,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import AIChatScaffold from './AIChatScaffold';
 import SentenceTransformer from './SentenceTransformer';
-import { callGeminiApiDirectly } from '../utils/geminiDirect';
 import { getDynamicMockEssay } from '../data/mockEssays';
 
 
@@ -891,6 +890,7 @@ export default function AIOutlineHelper({
     };
     keywords: string[];
     errorsToAvoid: string[];
+    isSimulated?: boolean;
   } | null>(null);
 
 
@@ -952,24 +952,8 @@ export default function AIOutlineHelper({
       }
       setGeneratedResult(data);
     } catch (err) {
-      console.warn('Gemini generate outline failed, trying direct client fallback:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'generate',
-            topic: topicToUse,
-            type: selectedGenreId,
-            model: selectedModel,
-            apiKey
-          });
-          setGeneratedResult(directData);
-          setIsGenerating(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini generate failed:', directErr);
-        }
-      }
-      setGeneratedResult(getClientMockOutline(topicToUse, selectedGenreId));
+      console.warn('Gemini generate outline failed, using offline mock outline:', err);
+      setGeneratedResult({ ...getClientMockOutline(topicToUse, selectedGenreId), isSimulated: true });
     } finally {
       setIsGenerating(false);
     }
@@ -993,25 +977,7 @@ export default function AIOutlineHelper({
       // Pre-populate v2 with v1 draft for easy editing
       setV2Outline(v1Outline);
     } catch (err) {
-      console.warn('Gemini grading failed, trying direct client-side call:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'grade',
-            topic: customTopic,
-            type: selectedGenreId,
-            outline: v1Outline,
-            model: selectedModel,
-            apiKey
-          });
-          setV1Grade(directData);
-          setV2Outline(v1Outline);
-          setIsGradingV1(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini grading failed:', directErr);
-        }
-      }
+      console.warn('Gemini grading failed, using offline mock grade:', err);
       const scoreVal = v1Outline.length > 120 ? 84 : 68;
       setV1Grade({
         score: scoreVal,
@@ -1042,7 +1008,8 @@ export default function AIOutlineHelper({
           { name: 'Phát triển ý chi tiết', status: v1Outline.length > 120 },
           { name: 'Sử dụng từ ngữ biểu cảm', status: v1Outline.length > 80 },
           { name: 'Có bài học trải nghiệm sâu sắc', status: v1Outline.includes('bài học') || v1Outline.length > 100 }
-        ]
+        ],
+        isSimulated: true
       });
       setV2Outline(v1Outline);
     } finally {
@@ -1073,28 +1040,7 @@ export default function AIOutlineHelper({
       }
       setComparison(data);
     } catch (err) {
-      console.warn('Gemini comparison failed, trying direct client fallback:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'compare',
-            topic: customTopic,
-            type: selectedGenreId,
-            outlineBefore: v1Outline,
-            outlineAfter: v2Outline,
-            scoreBefore: v1Grade?.score || 68,
-            skillsBefore: v1Grade?.criteriaScores || { understand: 14, structure: 14, development: 16, creativity: 12, logic: 9 },
-            model: selectedModel,
-            apiKey
-          });
-          setComparison(directData);
-          setIsGradingV2(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini comparison failed:', directErr);
-        }
-      }
-
+      console.warn('Gemini comparison failed, using offline mock comparison:', err);
       const scoreBefore = v1Grade?.score || 68;
       const scoreAfter = Math.min(scoreBefore + 15, 96);
       const scoreDiff = scoreAfter - scoreBefore;
@@ -1141,7 +1087,8 @@ export default function AIOutlineHelper({
           creativity: Math.min((v1Grade?.criteriaScores.creativity || 12) + 3, 20),
           logic: Math.min((v1Grade?.criteriaScores.logic || 9) + 2, 15)
         },
-        feedback: currentFeedback
+        feedback: currentFeedback,
+        isSimulated: true
       });
     } finally {
       setIsGradingV2(false);
@@ -1227,26 +1174,8 @@ export default function AIOutlineHelper({
       }
       setGeneratedEssay(data);
     } catch (err) {
-      console.warn('Gemini exemplary essay generation failed, trying direct client-side call:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'essay',
-            topic: topicToUse,
-            type: selectedGenreId,
-            format: essayFormat,
-            outline: useDraftOutline ? (v2Outline || v1Outline) : undefined,
-            model: selectedModel,
-            apiKey
-          });
-          setGeneratedEssay(directData);
-          setIsGeneratingEssay(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini essay failed:', directErr);
-        }
-      }
-      setGeneratedEssay(getClientMockEssay(topicToUse, selectedGenreId, essayFormat));
+      console.warn('Gemini exemplary essay generation failed, using offline mock essay:', err);
+      setGeneratedEssay({ ...getClientMockEssay(topicToUse, selectedGenreId, essayFormat), isSimulated: true });
     } finally {
       setIsGeneratingEssay(false);
     }
@@ -1540,6 +1469,14 @@ export default function AIOutlineHelper({
                 transition={{ duration: 0.3 }}
                 className="grid grid-cols-1 lg:grid-cols-3 gap-6"
               >
+                {generatedResult.isSimulated && (
+                  <div className="lg:col-span-3 flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-2xl p-3 text-xs font-medium">
+                    <span className="text-base leading-none">🔌</span>
+                    <span>
+                      Đây là dàn ý <strong>minh hoạ (chưa bật AI thật)</strong> — được ghép từ mẫu có sẵn, chưa thực sự phân tích riêng đề bài của em. Vào <strong>Cài đặt ⚙️</strong> để thêm API key Gemini nếu muốn có gợi ý riêng theo đúng đề bài.
+                    </span>
+                  </div>
+                )}
                 {/* Visual outline blocks (Left & Center, spanning 2 columns) */}
                 <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl border border-amber-100/30 shadow-sm p-6 space-y-6">
                   <div className="border-b border-neutral-100 pb-3">
@@ -1716,6 +1653,14 @@ Kết bài: Em yêu thích giờ ra chơi ở khu sân trường.`);
                 exit={{ opacity: 0 }}
                 className="grid grid-cols-1 lg:grid-cols-3 gap-6"
               >
+                {v1Grade.isSimulated && (
+                  <div className="lg:col-span-3 flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-2xl p-3 text-xs font-medium">
+                    <span className="text-base leading-none">🔌</span>
+                    <span>
+                      Đây là kết quả <strong>minh hoạ (chưa bật AI thật)</strong> — điểm số dựa trên quy tắc đơn giản, chưa thực sự đọc hiểu nội dung bài viết của em. Vào <strong>Cài đặt ⚙️</strong> để thêm API key Gemini nếu muốn được chấm điểm chính xác theo nội dung.
+                    </span>
+                  </div>
+                )}
                 {/* Score and Task challenges Column (1 Column) */}
                 <div className="space-y-6">
                   {/* Score badge card */}
@@ -1877,6 +1822,14 @@ Kết bài: Em yêu thích giờ ra chơi ở khu sân trường.`);
                 exit={{ opacity: 0, y: -15 }}
                 className="space-y-6"
               >
+                {comparison.isSimulated && (
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-2xl p-3 text-xs font-medium">
+                    <span className="text-base leading-none">🔌</span>
+                    <span>
+                      Đây là kết quả <strong>minh hoạ (chưa bật AI thật)</strong> — hãy vào <strong>Cài đặt ⚙️</strong> để thêm API key Gemini nếu muốn được đo tiến bộ chính xác theo nội dung bài viết.
+                    </span>
+                  </div>
+                )}
                 {/* Score Growth Display Banner */}
                 <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white p-6 md:p-8 rounded-3xl shadow-lg text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="space-y-2">
@@ -2194,6 +2147,14 @@ Kết bài: Em yêu thích giờ ra chơi ở khu sân trường.`);
             {/* Exemplary Essay View */}
             {generatedEssay && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {generatedEssay.isSimulated && (
+                  <div className="lg:col-span-3 flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-2xl p-3 text-xs font-medium">
+                    <span className="text-base leading-none">🔌</span>
+                    <span>
+                      Đây là bài văn <strong>minh hoạ (chưa bật AI thật)</strong> — được ghép từ mẫu có sẵn, chưa viết riêng theo đề bài của em. Vào <strong>Cài đặt ⚙️</strong> để thêm API key Gemini nếu muốn có bài mẫu riêng theo đúng đề bài.
+                    </span>
+                  </div>
+                )}
                 {/* Main composition paper view */}
                 <div className="lg:col-span-2 bg-amber-50/10 backdrop-blur-xs rounded-2xl border border-amber-200/40 p-6 md:p-8 shadow-sm space-y-6 relative overflow-hidden">
                   {/* Decorative lined paper style background */}

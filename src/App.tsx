@@ -126,6 +126,12 @@ export default function App() {
     }
     return null;
   });
+  // PIN-free public roster (name/avatar only) used to render the student picker
+  // before this device has proven it's allowed to see anything more (see Phase 1
+  // security notes: full classInfo, which includes PINs, is only fetched once
+  // this device is teacher-authenticated or has an already-verified student session).
+  const [studentRoster, setStudentRoster] = useState<{ className: string; schoolName?: string; students: StudentEntry[] } | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
   const [currentStudent, setCurrentStudent] = useState<StudentEntry | null>(() => {
     const savedId = localStorage.getItem('vm5_current_student');
     const savedClass = localStorage.getItem('vm5_class_info');
@@ -168,6 +174,8 @@ export default function App() {
   const [showAdminUnlockModal, setShowAdminUnlockModal] = useState(false);
   const [adminUnlockInput, setAdminUnlockInput] = useState('');
   const [adminUnlockError, setAdminUnlockError] = useState(false);
+  const [isAdminVerifying, setIsAdminVerifying] = useState(false);
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('vm5_admin_key') || '');
   const [adminStats, setAdminStats] = useState<any[]>([]);
   const [isAdminLoading, setIsAdminLoading] = useState(false);
 
@@ -198,7 +206,7 @@ export default function App() {
     try {
       const response = await fetch('/api/admin/stats', {
         headers: {
-          'x-admin-key': 'admin9999'
+          'x-admin-key': adminKey
         }
       });
       if (response.ok) {
@@ -234,36 +242,59 @@ export default function App() {
 
     const syncClassAndSubmissions = async () => {
       try {
-        // 1. Sync Class Info
-        const classRes = await fetch(`/api/sync/class-info?teacherId=${teacherId}`);
-        if (classRes.ok) {
-          const classData = await classRes.json();
-          if (classData.success) {
-            if (classData.classInfo) {
-              setClassInfo(classData.classInfo);
-              localStorage.setItem('vm5_class_info', JSON.stringify(classData.classInfo));
-            } else {
-              // Server database is empty, but we have local classInfo! Let's auto-push it to server.
-              const localClassSaved = localStorage.getItem('vm5_class_info');
-              if (localClassSaved) {
-                try {
-                  const parsedLocal = JSON.parse(localClassSaved);
-                  if (parsedLocal && parsedLocal.students && parsedLocal.students.length > 0) {
-                    await fetch('/api/sync/class-info', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        teacherId,
-                        classInfo: parsedLocal
-                      })
-                    });
-                    console.log('Auto-synchronized local class info to server database.');
+        // 1. Sync Class Info.
+        // IMPORTANT: only fetch the full roster (which includes every student's PIN) once
+        // this device has actually authenticated as the teacher or as a specific student.
+        // Otherwise (e.g. a visitor who just typed in a class code, or a shared/unauthenticated
+        // browser that still has an old teacherId cached), only fetch the PIN-free public roster
+        // so PINs never reach a browser that hasn't proven it's allowed to see them.
+        const isAuthenticatedOnThisDevice = isTeacherAuthenticated || !!currentStudent;
+
+        if (isAuthenticatedOnThisDevice) {
+          const classRes = await fetch(`/api/sync/class-info?teacherId=${teacherId}`);
+          if (classRes.ok) {
+            const classData = await classRes.json();
+            if (classData.success) {
+              if (classData.classInfo) {
+                setClassInfo(classData.classInfo);
+                localStorage.setItem('vm5_class_info', JSON.stringify(classData.classInfo));
+              } else {
+                // Server database is empty, but we have local classInfo! Let's auto-push it to server.
+                const localClassSaved = localStorage.getItem('vm5_class_info');
+                if (localClassSaved) {
+                  try {
+                    const parsedLocal = JSON.parse(localClassSaved);
+                    if (parsedLocal && parsedLocal.students && parsedLocal.students.length > 0) {
+                      await fetch('/api/sync/class-info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          teacherId,
+                          classInfo: parsedLocal
+                        })
+                      });
+                      console.log('Auto-synchronized local class info to server database.');
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse or auto-sync local classInfo:', e);
                   }
-                } catch (e) {
-                  console.error('Failed to parse or auto-sync local classInfo:', e);
                 }
               }
             }
+          }
+        } else if (!classInfo) {
+          // Not authenticated on this device yet: only pull the PIN-free roster, and only
+          // to populate the student-picker screen (never overwrite an existing trusted local copy).
+          try {
+            const rosterRes = await fetch(`/api/sync/roster?teacherId=${teacherId}`);
+            if (rosterRes.ok) {
+              const rosterData = await rosterRes.json();
+              if (rosterData.success && rosterData.classInfo) {
+                setStudentRoster(rosterData.classInfo);
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to fetch public roster:', e);
           }
         }
 
@@ -320,7 +351,7 @@ export default function App() {
     };
 
     syncClassAndSubmissions();
-  }, [teacherId, currentStudent?.id]);
+  }, [teacherId, currentStudent?.id, isTeacherAuthenticated]);
 
 
   // Auto-redirect unauthorized users away from teacher tab or disabled tabs
@@ -371,15 +402,32 @@ export default function App() {
     }
   };
 
-  const handleAdminUnlockSubmit = () => {
-    if (adminUnlockInput === 'admin9999') {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('vm5_is_admin', 'true');
-      setShowAdminUnlockModal(false);
-      setAdminUnlockInput('');
-      setAdminUnlockError(false);
-    } else {
+  const handleAdminUnlockSubmit = async () => {
+    if (!adminUnlockInput.trim() || isAdminVerifying) return;
+    setIsAdminVerifying(true);
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: adminUnlockInput })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAdminKey(adminUnlockInput);
+        sessionStorage.setItem('vm5_admin_key', adminUnlockInput);
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('vm5_is_admin', 'true');
+        setShowAdminUnlockModal(false);
+        setAdminUnlockInput('');
+        setAdminUnlockError(false);
+      } else {
+        setAdminUnlockError(true);
+      }
+    } catch (err) {
+      console.error('Failed to verify admin key:', err);
       setAdminUnlockError(true);
+    } finally {
+      setIsAdminVerifying(false);
     }
   };
 
@@ -465,6 +513,8 @@ export default function App() {
     setIsAdminAuthenticated(false);
     sessionStorage.removeItem('vm5_is_teacher');
     sessionStorage.removeItem('vm5_is_admin');
+    sessionStorage.removeItem('vm5_admin_key');
+    setAdminKey('');
     localStorage.removeItem('vm5_current_student');
     setActiveTab('syllabus');
   };
@@ -488,8 +538,38 @@ export default function App() {
   ];
 
   // Helper to render student picker modal
+  // Verifies a student's PIN against the server (the real PIN is never sent to the browser)
+  const handleVerifyPin = async (student: StudentEntry) => {
+    if (isVerifyingPin) return;
+    setIsVerifyingPin(true);
+    try {
+      const res = await fetch('/api/sync/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId, studentId: student.id, pin: pinInput })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        handleSelectStudent(student);
+        setPickerStep('select');
+        setPinInput('');
+        setPinError(false);
+      } else {
+        setPinError(true);
+      }
+    } catch (err) {
+      console.error('Failed to verify PIN:', err);
+      setPinError(true);
+    } finally {
+      setIsVerifyingPin(false);
+    }
+  };
+
   const renderStudentPicker = () => {
-    if (!classInfo) {
+    // PIN-free roster used purely to render names/avatars until this device authenticates.
+    const rosterSource = classInfo || studentRoster;
+
+    if (!rosterSource) {
       return (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-overlay bg-black/40 backdrop-blur-xs"
@@ -523,14 +603,13 @@ export default function App() {
                     const input = (document.getElementById('student-sync-code-input') as HTMLInputElement)?.value?.trim();
                     if (!input) return;
                     try {
-                      const res = await fetch(`/api/sync/class-info?teacherId=${input}`);
+                      const res = await fetch(`/api/sync/roster?teacherId=${input}`);
                       if (res.ok) {
                         const data = await res.json();
                         if (data.success && data.classInfo) {
                           setTeacherId(input);
                           localStorage.setItem('vm5_teacher_id', input);
-                          setClassInfo(data.classInfo);
-                          localStorage.setItem('vm5_class_info', JSON.stringify(data.classInfo));
+                          setStudentRoster(data.classInfo);
                           alert('Kết nối lớp học thành công! 🎉 Em hãy chọn tên của mình nhé.');
                         } else {
                           alert('Không tìm thấy lớp học với mã này. Hãy hỏi cô giáo xem có đúng mã không nhé.');
@@ -567,14 +646,14 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-heading font-extrabold text-neutral-800">🎒 Em tên gì nhỉ?</h2>
-                  <p className="text-xs text-neutral-500">{classInfo.className} • Chọn tên của em</p>
+                  <p className="text-xs text-neutral-500">{rosterSource.className} • Chọn tên của em</p>
                 </div>
                 <button onClick={() => { setShowStudentPicker(false); setPickerStep('select'); }} className="p-2 hover:bg-neutral-100 rounded-xl transition cursor-pointer">
                   <X className="w-5 h-5 text-neutral-400" />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-1">
-                {classInfo.students.map((student) => {
+                {rosterSource.students.map((student) => {
                   const isActive = currentStudent?.id === student.id;
                   return (
                     <button
@@ -598,14 +677,13 @@ export default function App() {
                     const newCode = prompt('Nhập mã đồng bộ lớp học do cô giáo cung cấp (ví dụ: t_abc123):');
                     if (!newCode || !newCode.trim()) return;
                     const cleanCode = newCode.trim();
-                    fetch(`/api/sync/class-info?teacherId=${cleanCode}`)
+                    fetch(`/api/sync/roster?teacherId=${cleanCode}`)
                       .then(res => res.json())
                       .then(data => {
                         if (data.success && data.classInfo) {
                           setTeacherId(cleanCode);
                           localStorage.setItem('vm5_teacher_id', cleanCode);
-                          setClassInfo(data.classInfo);
-                          localStorage.setItem('vm5_class_info', JSON.stringify(data.classInfo));
+                          setStudentRoster(data.classInfo);
                           alert('Đã kết nối lớp học mới thành công! 🎉');
                         } else {
                           alert('Không tìm thấy lớp học với mã này. Hãy kiểm tra lại.');
@@ -649,13 +727,7 @@ export default function App() {
                     onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(false); }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && pinInput.length === 4 && pickerStudent) {
-                        if (pinInput === pickerStudent.pin) {
-                          handleSelectStudent(pickerStudent);
-                          setPickerStep('select');
-                          setPinInput('');
-                        } else {
-                          setPinError(true);
-                        }
+                        handleVerifyPin(pickerStudent);
                       }
                     }}
                     placeholder="• • • •"
@@ -673,19 +745,11 @@ export default function App() {
                 <p className="text-[10px] text-neutral-400">Nhập 4 số mã PIN cô giáo đã phát cho em</p>
 
                 <button
-                  onClick={() => {
-                    if (pickerStudent && pinInput === pickerStudent.pin) {
-                      handleSelectStudent(pickerStudent);
-                      setPickerStep('select');
-                      setPinInput('');
-                    } else {
-                      setPinError(true);
-                    }
-                  }}
-                  disabled={pinInput.length !== 4}
+                  onClick={() => pickerStudent && handleVerifyPin(pickerStudent)}
+                  disabled={pinInput.length !== 4 || isVerifyingPin}
                   className="w-48 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-sm transition shadow-md cursor-pointer disabled:opacity-40 flex items-center justify-center space-x-2"
                 >
-                  <span>Vào học thôi! 🚀</span>
+                  <span>{isVerifyingPin ? 'Đang kiểm tra...' : 'Vào học thôi! 🚀'}</span>
                 </button>
               </div>
             </>
@@ -817,9 +881,10 @@ export default function App() {
               </button>
               <button
                 onClick={handleAdminUnlockSubmit}
-                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer"
+                disabled={isAdminVerifying}
+                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Xác nhận
+                {isAdminVerifying ? 'Đang kiểm tra...' : 'Xác nhận'}
               </button>
             </div>
           </div>

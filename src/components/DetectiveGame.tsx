@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Loader2, CheckCircle2, XCircle, Trophy, RefreshCw, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { callGeminiApiDirectly } from '../utils/geminiDirect';
 
 interface DetectedError {
   location: string;
@@ -55,26 +54,7 @@ export default function DetectiveGame({ apiKey, selectedModel }: DetectiveGamePr
       setErrors(data.errors || []);
       setGamePhase('playing');
     } catch (err) {
-      console.warn('Gemini detective generation failed, trying direct client call:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'detective',
-            topic,
-            type: 'ta-canh',
-            errorType: 'thiếu cảm xúc, lạc đề nhẹ, câu đơn điệu',
-            model: selectedModel,
-            apiKey
-          });
-          setPassage(directData.passage);
-          setErrors(directData.errors || []);
-          setGamePhase('playing');
-          setIsLoading(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini detective failed:', directErr);
-        }
-      }
+      console.warn('Gemini detective generation failed, using offline mock data:', err);
       setPassage(mockData.passage);
       setErrors(mockData.errors);
       setGamePhase('playing');

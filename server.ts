@@ -587,7 +587,8 @@ function getMockOutline(topic: string, type: string) {
       thanbi: result.outline.thanbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic)),
       ketbi: result.outline.ketbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic))
 
-    }
+    },
+    isSimulated: true
   };
 }
 
@@ -987,7 +988,7 @@ Hãy trả về một đối tượng JSON có cấu trúc chính xác sau đây
     });
     const cleanedJson = cleanJsonResponse(textRes);
     const data = JSON.parse(cleanedJson);
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini Generate Outline Error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1067,7 +1068,7 @@ BẮT BUỘC TRẢ VỀ kết quả duy nhất dưới dạng một đối tư�
     });
     const cleanedJson = cleanJsonResponse(textRes);
     const data = JSON.parse(cleanedJson);
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini Generate Essay Error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1119,7 +1120,8 @@ app.post('/api/gemini/grade', async (req, res) => {
         { name: 'Phát triển ý chi tiết', status: outline.length > 120 },
         { name: 'Sử dụng từ ngữ biểu cảm', status: outline.length > 80 },
         { name: 'Có bài học trải nghiệm sâu sắc', status: outline.includes('bài học') || outline.includes('em hứa') || outline.length > 100 }
-      ]
+      ],
+      isSimulated: true
     });
   }
 
@@ -1165,7 +1167,7 @@ Hãy đánh giá cẩn thận và trả về cấu trúc JSON duy nhất sau (kh
       temperature: 0.6,
     });
     const data = JSON.parse(cleanJsonResponse(textRes));
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini grading error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1181,7 +1183,8 @@ Hãy đánh giá cẩn thận và trả về cấu trúc JSON duy nhất sau (kh
         improvements: ['Bổ sung thêm từ láy, hình ảnh so sánh', 'Nêu rõ cảm nghĩ ở kết bài'],
         nextSteps: 'Hãy bổ sung từ láy và hình ảnh miêu tả để bài viết cuốn hút hơn.'
       },
-      checklist: [{ name: 'Có mở bài', status: true }, { name: 'Thân bài chi tiết', status: false }]
+      checklist: [{ name: 'Có mở bài', status: true }, { name: 'Thân bài chi tiết', status: false }],
+      isSimulated: true
     });
   }
 });
@@ -1281,7 +1284,8 @@ app.post('/api/gemini/compare', async (req, res) => {
         creativity: Math.min(skillsBefore.creativity + 4, 20),
         logic: Math.min(skillsBefore.logic + 4, 15)
       },
-      feedback: currentFeedback
+      feedback: currentFeedback,
+      isSimulated: true
     });
   }
 
@@ -1334,7 +1338,7 @@ Hãy gửi kết quả cấu trúc JSON duy nhất sau (không có các chữ n�
       temperature: 0.5,
     });
     const data = JSON.parse(cleanJsonResponse(textRes));
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini compare error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1359,7 +1363,8 @@ Hãy gửi kết quả cấu trúc JSON duy nhất sau (không có các chữ n�
         celebration: 'Chúc mừng sự nỗ lực vượt khó tuyệt vời của em! Dàn ý lần 2 đã bổ sung những câu miêu tả sống động, nhiều từ láy và âm thanh vang vui.',
         reminders: 'Em cần liên kết hai đoạn tả hoạt động tự nhiên hơn nữa để chuyển cảnh thật mượt nhé.',
         growthWords: 'Em đã học được thói quen lắng nghe phản hồi và biến ý tưởng còn sơ sài thành bức tranh văn học giàu sắc thái.'
-      }
+      },
+      isSimulated: true
     });
   }
 });
@@ -2155,10 +2160,21 @@ app.post('/api/admin/track-use', async (req, res) => {
   }
 });
 
-// 8. Get telemetry stats for admin
+// 8. Verify an admin key without exposing any data (used by the login modal)
+app.post('/api/admin/verify', (req, res) => {
+  const { key } = req.body || {};
+  const expected = process.env.ADMIN_KEY;
+  if (!expected) {
+    return res.status(503).json({ valid: false, error: 'ADMIN_KEY chưa được cấu hình trên server' });
+  }
+  return res.json({ valid: !!key && key === expected });
+});
+
+// 9. Get telemetry stats for admin
 app.get('/api/admin/stats', async (req, res) => {
   const adminKey = req.headers['x-admin-key'] as string | undefined;
-  if (adminKey !== 'admin9999') {
+  const expected = process.env.ADMIN_KEY;
+  if (!expected || adminKey !== expected) {
     return res.status(401).json({ error: 'Mã xác thực Admin không hợp lệ' });
   }
 
@@ -2336,6 +2352,48 @@ app.get('/api/sync/class-info', async (req, res) => {
     return res.json({ success: true, classInfo });
   } catch (err: any) {
     console.error('Error in GET /api/sync/class-info:', err);
+    return res.status(500).json({ error: err.message || 'Lỗi server' });
+  }
+});
+
+// 1.5. Get PIN-free public roster (name/avatar only) — safe to call before any authentication,
+// e.g. from the student picker screen when a visitor types in a class code.
+app.get('/api/sync/roster', async (req, res) => {
+  const teacherId = req.query.teacherId as string;
+  if (!teacherId) {
+    return res.status(450).json({ error: 'Mã giáo viên (teacherId) là bắt buộc' });
+  }
+  try {
+    const classInfo = await getClassInfo(teacherId);
+    if (!classInfo) {
+      return res.json({ success: true, classInfo: null });
+    }
+    return res.json({
+      success: true,
+      classInfo: {
+        className: classInfo.className,
+        schoolName: classInfo.schoolName,
+        students: (classInfo.students || []).map((s: any) => ({ id: s.id, name: s.name, avatar: s.avatar }))
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in GET /api/sync/roster:', err);
+    return res.status(500).json({ error: err.message || 'Lỗi server' });
+  }
+});
+
+// 1.6. Verify a student's PIN server-side — the real PIN is never sent back to the client.
+app.post('/api/sync/verify-pin', async (req, res) => {
+  const { teacherId, studentId, pin } = req.body || {};
+  if (!teacherId || !studentId || !pin) {
+    return res.status(400).json({ error: 'Thiếu thông tin xác thực (teacherId, studentId, pin)' });
+  }
+  try {
+    const classInfo = await getClassInfo(teacherId);
+    const student = (classInfo?.students || []).find((s: any) => s.id === studentId);
+    return res.json({ valid: !!student && student.pin === pin });
+  } catch (err: any) {
+    console.error('Error in POST /api/sync/verify-pin:', err);
     return res.status(500).json({ error: err.message || 'Lỗi server' });
   }
 });

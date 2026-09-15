@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Wand2, Loader2, Copy, Check, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { callGeminiApiDirectly } from '../utils/geminiDirect';
 
 interface Variation {
   style: string;
@@ -53,23 +52,7 @@ export default function SentenceTransformer({ genreId, apiKey, selectedModel }: 
       }
       setResult(data);
     } catch (err) {
-      console.warn('Gemini sentence transform failed, trying direct client call:', err);
-      if (apiKey) {
-        try {
-          const directData = await callGeminiApiDirectly({
-            action: 'transform',
-            sentence: sentence.trim(),
-            type: genreId,
-            model: selectedModel,
-            apiKey
-          });
-          setResult(directData);
-          setIsTransforming(false);
-          return;
-        } catch (directErr) {
-          console.error('Direct client-side Gemini transform failed:', directErr);
-        }
-      }
+      console.warn('Gemini sentence transform failed, using offline mock result:', err);
       setResult(getMockResult(sentence.trim()));
     } finally {
       setIsTransforming(false);

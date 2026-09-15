@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { callGeminiApiDirectly } from '../utils/geminiDirect';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -580,24 +579,8 @@ export default function AIChatScaffold({ topic, genreId, apiKey, selectedModel }
         throw new Error(data?.error || 'Invalid API response');
       }
     } catch (err) {
-      console.warn('Gemini chat failed, trying direct client call:', err);
-      if (apiKey) {
-        try {
-          data = await callGeminiApiDirectly({
-            action: 'chat',
-            messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-            topic: topic || 'Bài viết tự do',
-            type: genreId,
-            model: selectedModel,
-            apiKey
-          });
-        } catch (directErr) {
-          console.error('Direct client-side Gemini chat failed:', directErr);
-          data = getMockReply();
-        }
-      } else {
-        data = getMockReply();
-      }
+      console.warn('Gemini chat failed, using offline mock reply:', err);
+      data = getMockReply();
     }
 
     try {
