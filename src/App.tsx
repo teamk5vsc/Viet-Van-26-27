@@ -1484,7 +1484,7 @@ export default function App() {
             <div className="flex items-center space-x-2 text-xs text-neutral-500">
               <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
               <span className="font-medium">Được phát triển bởi</span>
-              <span className="font-heading font-bold text-amber-700">cô Đào Ngọc Mai</span>
+              <span className="font-heading font-bold text-amber-700">Cô Đào Ngọc Mai</span>
               <span className="text-neutral-300">•</span>
               <span className="text-[10px] text-neutral-400">© {new Date().getFullYear()} VietMaster 5</span>
             </div>
