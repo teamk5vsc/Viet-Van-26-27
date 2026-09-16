@@ -1026,7 +1026,7 @@ export default function App() {
 
         <div className="py-6 border-t border-amber-100/40 text-center space-y-2">
           <p className="text-[10px] text-neutral-400 font-medium">
-            © {new Date().getFullYear()} VietMaster 5 • Ms. Ngọc Mai
+            © {new Date().getFullYear()} VietMaster 5 • Cô Đào Ngọc Mai
           </p>
           <button
             onClick={() => {
@@ -1508,7 +1508,7 @@ export default function App() {
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">📝</span>
                 <div>
-                  <p className="text-xs font-heading font-bold text-neutral-700 uppercase tracking-wider">VietMaster 5 • Bản Đồ Ý Tưởng Sư Phạm</p>
+                  <p className="text-xs font-heading font-bold text-neutral-700 uppercase tracking-wider">VietMaster 5</p>
                   <p className="text-[10px] text-neutral-400 font-medium mt-0.5">
                     Tiếng Việt Lớp 5 • Hỗ trợ bởi Gemini AI
                   </p>
@@ -1528,8 +1528,8 @@ export default function App() {
             {/* Credit line */}
             <div className="flex items-center space-x-2 text-xs text-neutral-500">
               <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
-              <span className="font-medium">Được tạo bởi</span>
-              <span className="font-heading font-bold text-amber-700">Ms. Ngọc Mai</span>
+              <span className="font-medium">Được phát triển bởi</span>
+              <span className="font-heading font-bold text-amber-700">cô Đào Ngọc Mai</span>
               <span className="text-neutral-300">•</span>
               <span className="text-[10px] text-neutral-400">© {new Date().getFullYear()} VietMaster 5</span>
             </div>
