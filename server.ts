@@ -45,7 +45,10 @@ function getGeminiClient(apiKeyOverride?: string): GoogleGenAI | null {
 // future renames, then fall back to explicit versions known to exist at time of writing.
 // Flash models first: they have a much more usable free-tier quota than Pro models
 // (Pro quota can be 0 on the free tier of a given project until billing is enabled).
-const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.5-pro'];
+// gemini-2.5-pro was retired (confirmed via a live 404: "no longer available to new users,
+// use models/gemini-3.1-pro-preview"). Try multiple flash-family models before falling back
+// to Pro, since a transient 503 on one Flash model doesn't mean the others are down too.
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
 
 async function generateWithFallback(
   client: GoogleGenAI,
@@ -946,6 +949,36 @@ app.get('/api/gemini/status', (req, res) => {
   return res.json({ hasServerKey: !!process.env.GEMINI_API_KEY });
 });
 
+// Shared reference list of Textbook (Tieng Viet 5 - Ket noi tri thuc) stories, used by every
+// prompt that may need to write about one of them (outline generation, exemplary essays).
+// IMPORTANT: only list a character name here if it has been verified against the actual
+// textbook text. Gemini's own parametric knowledge of this specific curriculum is unreliable,
+// so entries without confirmed names are intentionally left as a plot summary only — see the
+// "not sure" instruction appended below the list, which tells the model to stay generic
+// instead of inventing a confident-sounding but wrong character name.
+const TEXTBOOK_REFERENCE = `Tài liệu tham khảo về sách giáo khoa Tiếng Việt 5 mới (Bộ Kết nối tri thức - KNTT):
+- Dạng Kể chuyện sáng tạo / Bày tỏ cảm xúc về câu chuyện:
+  + "Thanh âm của gió" (Nhân vật chăn trâu gồm: Bống, anh trai của Bống, Điệp, Văn, Thành; chơi trò bịt tai nghe tiếng gió rì rào qua khe đá, xào xạc qua kẽ tre)
+  + "Cánh đồng hoa" (Nhân vật gồm: Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ cùng dọn rác và trồng hoa hướng dương, cúc bách nhật trên đồng cỏ đầu buôn làng)
+  + "Hộp quà màu thiên thanh" (Nhân vật gồm: Tân, Quang, Huệ viết thư tri ân chứa trong hộp màu xanh thiên thanh tặng cô giáo chủ nhiệm)
+  + "Giỏ hoa tháng Năm" (Nhân vật kể chuyện tri ân thầy cô giáo — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
+  + "Những con hạc giấy" (Cô bé Sa-da-cô và ước mong hòa bình qua 1000 con hạc giấy)
+  + "Bến sông tuổi thơ" (Kỷ niệm êm đềm bên bến sông quê — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
+  + "Tiếng hát của người đá" (Câu chuyện dân gian cổ tích ý nghĩa — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
+  + "Khu rừng của Mát" (Bảo vệ thiên nhiên rừng xanh, chống lâm tặc — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
+  + "Sự tích chú Tễu" (Nghệ thuật múa rối nước truyền thống — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
+  + "Bác sĩ A-léc-xăng-đơ Y-éc-xanh" (Lòng nhân ái, tình yêu đất nước Việt Nam của vị bác sĩ người Pháp)
+- Dạng Văn tả cảnh:
+  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
+  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
+  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
+  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
+  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
+  + "Những búp chè trên cây cổ thụ" (Tả những đồi chè shan tuyết cổ thụ Tây Bắc bồng bềnh trong mây khói)
+  + "Đường quê Đồng Tháp Mười" / "Xuồng ba lá quê tôi" (Cảnh sông nước mênh mông, thanh bình của vùng Nam Bộ)
+
+QUAN TRỌNG: nếu đề bài nhắc tới một trong các câu chuyện/bài đọc trên (hoặc bất kỳ bài đọc nào khác trong chương trình Tiếng Việt 5 mới 2018), bạn BẮT BUỘC dùng đúng tên nhân vật và chi tiết cốt truyện đã liệt kê ở trên — tuyệt đối không bịa thêm câu chuyện khác. Với những tác phẩm mà tên nhân vật cụ thể chưa được xác nhận ở trên, hãy mô tả nhân vật một cách chung chung (ví dụ "bạn nhỏ trong câu chuyện", "nhân vật chính") thay vì tự đặt tên riêng — thà chung chung còn hơn bịa sai.`;
+
 // 1. AI Outline Generation Endpoint
 app.post('/api/gemini/generate', async (req, res) => {
   const { topic, type, model } = req.body;
@@ -962,28 +995,10 @@ app.post('/api/gemini/generate', async (req, res) => {
 
   try {
     const prompt = `Bạn là chuyên gia giáo dục tiểu học hỗ trợ dạy Tiếng Việt viết văn lớp 5 theo chương trình GDPT 2018 mới (kết nối tri thức).
-Dưới đây là một số bài đọc, câu chuyện nổi bật trong Sách giáo khoa Tiếng Việt 5 mới mà học sinh thường được yêu cầu viết văn, kể chuyện sáng tạo hoặc bày tỏ cảm nghĩ:
-- Dạng Kể chuyện sáng tạo hoặc Bày tỏ cảm xúc về câu chuyện:
-  + "Thanh âm của gió" (Câu chuyện về tình bạn giữa Thỏ con, Cừu con, Bò con ở thung lũng lộng gió)
-  + "Cánh đồng hoa" (Các bạn nhỏ cùng biến bãi rác/đất hoang xám xịt thành đồng hoa rực rỡ sắc màu)
-  + "Bến sông tuổi thơ" (Kỷ niệm êm đềm bên bến sông quê của nhân vật)
-  + "Tiếng hát của người đá" (Câu chuyện dân gian cổ tích ý nghĩa)
-  + "Khu rừng của Mát" (Bảo vệ thiên nhiên rừng xanh, chống lâm tặc)
-  + "Sự tích chú Tễu" (Nghệ thuật múa rối nước truyền thống)
-  + "Hộp quà màu thiên thanh" (Lòng trắc ẩn, tình cảm gia đình ấm áp qua hộp quà màu xanh lục)
-  + "Giỏ hoa tháng Năm" (Lòng biết ơn thầy cô giáo thông qua câu chuyện giỏ hoa tri ân)
-  + "Những con hạc giấy" (Câu chuyện cảm động về cô bé Sa-da-cô và 1000 con hạc giấy cầu ước hòa bình thế giới)
-  + "Bác sĩ A-léc-xăng-đơ Y-éc-xanh" (Lòng nhân ái, tình yêu đất nước Việt Nam của vị bác sĩ người Pháp)
-- Dạng Văn tả cảnh:
-  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
-  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
-  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
-  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
-  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
-  + "Những búp chè trên cây cổ thụ" (Tả những đồi chè shan tuyết cổ thụ Tây Bắc bồng bềnh trong mây khói)
-  + "Đường quê Đồng Tháp Mười" / "Xuồng ba lá quê tôi" (Cảnh sông nước mênh mông, thanh bình của vùng Nam Bộ)
 
-Khi phân tích đề bài "${topic}" thuộc dạng "${type}", nếu đề bài nhắc tới các câu chuyện, cảnh vật hay nhân vật này (hoặc bất kỳ bài đọc nào trong chương trình Tiếng Việt 5 mới 2018), bạn BẮT BUỘC phải liên hệ chính xác đến nội dung, tình tiết cốt truyện, nhân vật và từ khóa của tác phẩm đó để viết dàn ý chi tiết và câu văn mẫu tương ứng. Tuyệt đối tránh viết chung chung hay nhầm lẫn sang các bài đọc cũ.
+${TEXTBOOK_REFERENCE}
+
+Đề bài của học sinh: "${topic}" (thuộc dạng "${type}").
 
 Hãy trả về một đối tượng JSON có cấu trúc chính xác sau đây (không có bất kỳ text hay markdown nào khác ngoài đối tượng JSON):
 {
@@ -1059,21 +1074,9 @@ Yêu cầu về chất lượng bài viết:
 4. Nếu định dạng là 'paragraph' (đoạn văn), viết một đoạn văn liền mạch duy nhất không xuống dòng, tập trung thể hiện sâu sắc một khía cạnh nổi bật.
 5. Nếu có dàn ý của học sinh ('outline') kèm theo, hãy lấy cảm hứng viết bám sát theo các ý chính trong dàn ý đó nhưng nâng tầm ngôn từ lên loại giỏi để học sinh noi theo.
 
-Tài liệu tham khảo bắt buộc về sách giáo khoa Tiếng Việt 5 mới (Bộ Kết nối tri thức - KNTT):
-- Dạng Kể chuyện sáng tạo:
-  + "Thanh âm của gió" (Nhân vật chăn trâu gồm: Bống, anh trai của Bống, Điệp, Văn, Thành; chơi trò bịt tai nghe tiếng gió rì rào qua khe đá, xào xạc qua kẽ tre)
-  + "Cánh đồng hoa" (Nhân vật gồm: Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ cùng dọn rác và trồng hoa hướng dương, cúc bách nhật trên đồng cỏ đầu buôn làng)
-  + "Hộp quà màu thiên thanh" (Nhân vật gồm: Tân, Quang, Huệ viết thư tri ân chứa trong hộp màu xanh thiên thanh tặng cô giáo chủ nhiệm)
-  + "Giỏ hoa tháng Năm" (Nhân vật kể chuyện tri ân thầy cô giáo)
-  + "Những con hạc giấy" (Cô bé Sa-da-cô và ước mong hòa bình qua 1000 con hạc giấy)
-- Dạng Văn tả cảnh:
-  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
-  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
-  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
-  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
-  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
+${TEXTBOOK_REFERENCE}
 
-Khi viết bài mẫu cho đề tài "${topic}", nếu đề tài liên quan đến các tác phẩm trong danh sách tham chiếu trên, bạn BẮT BUỘC phải sử dụng chính xác các tên nhân vật, địa danh và tình tiết cốt truyện tương ứng để bài mẫu chân thực và hoàn toàn thống nhất với sách giáo khoa lớp 5.
+Đề tài bài văn: "${topic}".
 
 Chủ đề: "${topic}"
 Dạng bài tương ứng: ${type}
@@ -1935,6 +1938,8 @@ Quy tắc:
 - Dẫn dắt học sinh xây dựng dàn ý từng bước (Mở bài → Thân bài → Kết bài)
 - Khuyến khích dùng từ ngữ miêu tả, cảm xúc
 - Sau 2-3 câu trả lời, tổng hợp thành một phần dàn ý
+
+${TEXTBOOK_REFERENCE}
 
 Đề bài: "${topic}"
 Dạng bài: ${type}
