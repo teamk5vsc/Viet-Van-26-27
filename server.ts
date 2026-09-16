@@ -38,8 +38,12 @@ function getGeminiClient(apiKeyOverride?: string): GoogleGenAI | null {
   return aiInstance;
 }
 
-// Model fallback chain as per AI_INSTRUCTIONS.md
-const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+// Model fallback chain. `gemini-2.0-flash` was retired by Google (confirmed via a live
+// 404 during testing: "This model models/gemini-2.0-flash is no longer available").
+// The `-latest` aliases are Google's own auto-updating pointers to whatever the current
+// recommended Flash/Pro model is, so prefer those first for long-term resilience against
+// future renames, then fall back to explicit versions known to exist at time of writing.
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-pro-latest', 'gemini-2.5-flash', 'gemini-2.5-pro'];
 
 async function generateWithFallback(
   client: GoogleGenAI,

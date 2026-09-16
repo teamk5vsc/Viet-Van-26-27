@@ -14,9 +14,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- AI Model Configuration ---
+// Model ids sent to our own /api/gemini/* backend, which tries each one against Google
+// and automatically falls through to the next on failure (see MODEL_FALLBACK_CHAIN in
+// server.ts). The "-latest" ids are Google's own auto-updating aliases, so they keep
+// working even after Google renames/retires specific dated model versions.
 const AI_MODELS = [
-  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', desc: 'Nhanh & tiết kiệm, phù hợp sử dụng hàng ngày', emoji: '⚡', isDefault: true },
-  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', desc: 'Chất lượng cao, phân tích sâu hơn', emoji: '🧠', isDefault: false },
+  { id: 'gemini-flash-latest', name: 'Gemini Flash', desc: 'Nhanh & tiết kiệm, phù hợp sử dụng hàng ngày', emoji: '⚡', isDefault: true },
+  { id: 'gemini-pro-latest', name: 'Gemini Pro', desc: 'Chất lượng cao, phân tích sâu hơn', emoji: '🧠', isDefault: false },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'Ổn định, dự phòng khi model mới quá tải', emoji: '🛡️', isDefault: false },
 ];
 
@@ -84,7 +88,7 @@ export default function App() {
 
   // API Key & Model management
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('vm5_api_key') || '');
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('vm5_model') || 'gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('vm5_model') || 'gemini-flash-latest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
 
