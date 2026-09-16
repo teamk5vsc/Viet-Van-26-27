@@ -6,6 +6,7 @@ import SequenceGame from './components/SequenceGame';
 import PortfolioTab from './components/PortfolioTab';
 import TeacherDashboard from './components/TeacherDashboard';
 import DetectiveGame from './components/DetectiveGame';
+import VietMasterHero from './components/VietMasterHero';
 import { 
   BookOpen, Sparkles, Gamepad2, Award, Users, Compass, 
   HelpCircle, Lightbulb, Heart, Settings,
@@ -1296,54 +1297,8 @@ export default function App() {
       </header>
 
       {/* ===== HERO WELCOME BANNER ===== */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div
-          className="relative overflow-hidden rounded-3xl shadow-[0_8px_30px_-8px_rgba(194,65,12,0.45)] min-h-[132px] sm:min-h-[164px]"
-          style={{ background: 'linear-gradient(115deg, #d97706 0%, #ea580c 45%, #e11d48 100%)' }}
-        >
-          {/* Soft depth layers: top-left glow + bottom vignette, purely decorative */}
-          <div className="pointer-events-none absolute -top-16 -left-10 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/10 to-transparent" />
-
-          <div className="relative z-10 flex items-center justify-between h-full">
-            <div className="flex items-center gap-3 sm:gap-4 p-5 sm:p-7 max-w-lg">
-              <motion.div
-                className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-sm ring-1 ring-white/25 flex items-center justify-center text-2xl sm:text-3xl shadow-inner shrink-0"
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                🦉
-              </motion.div>
-              <div className="space-y-1.5">
-                <h3 className="text-base sm:text-xl font-heading font-extrabold text-white tracking-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]">
-                  Mỗi bài văn là một cuộc phiêu lưu!
-                </h3>
-                <p className="text-[11px] sm:text-sm text-white/85 leading-relaxed max-w-xs sm:max-w-sm">
-                  {currentStudent ? `${currentStudent.name} ơi, hôm nay mình sẽ kể câu chuyện gì nhỉ? ✨` : 'Em có cả một thế giới trong trí tưởng tượng — hãy viết nó ra nào! ✍️'}
-                </p>
-                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-white bg-black/15 backdrop-blur-sm px-2.5 py-1 rounded-full ring-1 ring-white/20">
-                  <span className={`w-1.5 h-1.5 rounded-full ${aiIsReady ? 'bg-emerald-400 animate-pulse-soft' : 'bg-white/50'}`} />
-                  {aiIsReady ? 'AI sẵn sàng' : 'Chế độ ngoại tuyến'}
-                </span>
-              </div>
-            </div>
-
-            {/* Illustration - right side, faded into the gradient rather than hard-cropped */}
-            <div
-              className="hidden sm:block h-full w-[300px] lg:w-[360px] shrink-0 self-stretch"
-              style={{
-                maskImage: 'linear-gradient(to right, transparent 0%, black 22%)',
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 22%)',
-              }}
-            >
-              <img
-                src="/hero-banner.png"
-                alt="VietMaster 5 - Cú Văn và các bạn nhỏ"
-                className="h-full w-full object-cover object-[70%_30%]"
-              />
-            </div>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-5">
+        <VietMasterHero studentName={currentStudent?.name} aiIsReady={aiIsReady} />
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
