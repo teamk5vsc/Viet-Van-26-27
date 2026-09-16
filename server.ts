@@ -43,7 +43,9 @@ function getGeminiClient(apiKeyOverride?: string): GoogleGenAI | null {
 // The `-latest` aliases are Google's own auto-updating pointers to whatever the current
 // recommended Flash/Pro model is, so prefer those first for long-term resilience against
 // future renames, then fall back to explicit versions known to exist at time of writing.
-const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-pro-latest', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+// Flash models first: they have a much more usable free-tier quota than Pro models
+// (Pro quota can be 0 on the free tier of a given project until billing is enabled).
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.5-pro'];
 
 async function generateWithFallback(
   client: GoogleGenAI,
@@ -90,7 +92,30 @@ function cleanJsonResponse(text: string): string {
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.substring(0, cleaned.length - 3);
   }
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Gemini occasionally appends trailing commentary/whitespace after the JSON object despite
+  // instructions not to, which breaks a naive JSON.parse (SyntaxError: Unexpected non-whitespace
+  // character after JSON). Extract just the first balanced {...} object by tracking brace depth
+  // (respecting strings so braces inside quoted text don't throw off the count).
+  const start = cleaned.indexOf('{');
+  if (start === -1) return cleaned;
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return cleaned.slice(start, i + 1);
+    }
+  }
+  return cleaned;
 }
 
 function parseMockOutlineItem(item: string, genre: string, topic: string = ''): { point: string; detail: string; sample: string } {

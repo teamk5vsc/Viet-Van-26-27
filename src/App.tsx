@@ -88,7 +88,14 @@ export default function App() {
 
   // API Key & Model management
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('vm5_api_key') || '');
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('vm5_model') || 'gemini-flash-latest');
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const saved = localStorage.getItem('vm5_model');
+    // Discard stale ids from before model names were fixed (e.g. gemini-3-flash-preview,
+    // which no longer resolves to anything) so old browsers don't keep wasting a failed
+    // attempt on a dead model before falling through to a real one.
+    const isKnown = saved && AI_MODELS.some(m => m.id === saved);
+    return isKnown ? saved! : 'gemini-flash-latest';
+  });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
   // Whether the server has its own default Gemini key (set via GEMINI_API_KEY env var),
