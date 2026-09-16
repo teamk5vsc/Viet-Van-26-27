@@ -91,6 +91,10 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('vm5_model') || 'gemini-flash-latest');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
+  // Whether the server has its own default Gemini key (set via GEMINI_API_KEY env var),
+  // so AI can work even for a student/teacher who never entered a personal key here.
+  const [serverHasKey, setServerHasKey] = useState(false);
+  const aiIsReady = !!apiKey || serverHasKey;
 
   // Tab permissions configuration
   const [tabPermissions, setTabPermissions] = useState<Record<string, { student: boolean; guest: boolean }>>(() => {
@@ -235,12 +239,21 @@ export default function App() {
     }
   }, [isAdminAuthenticated]);
 
-  // Show settings modal on first load if teacher is authenticated but has no API key
+  // Fetch whether the server has its own default Gemini key once on load.
   useEffect(() => {
-    if (isTeacherAuthenticated && !apiKey) {
+    fetch('/api/gemini/status')
+      .then(res => res.json())
+      .then(data => setServerHasKey(!!data.hasServerKey))
+      .catch(() => setServerHasKey(false));
+  }, []);
+
+  // Show settings modal on first load if teacher is authenticated but no key is available
+  // anywhere (neither their own, nor a server-wide default one).
+  useEffect(() => {
+    if (isTeacherAuthenticated && !aiIsReady) {
       setShowSettingsModal(true);
     }
-  }, [isTeacherAuthenticated]);
+  }, [isTeacherAuthenticated, aiIsReady]);
 
   // --- CLOUD SYNC ON STARTUP ---
   useEffect(() => {
@@ -1297,7 +1310,7 @@ export default function App() {
                 </p>
                 <span className="inline-flex items-center text-[10px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-white/20">
                   <CheckSquare className="w-3 h-3 mr-1" />
-                  {apiKey ? '🦉 AI sẵn sàng ✓' : '📖 Offline mode'}
+                  {aiIsReady ? '🦉 AI sẵn sàng ✓' : '📖 Offline mode'}
                 </span>
               </div>
             </div>

@@ -914,6 +914,13 @@ function getMockEssay(topic: string, type: string, format: 'essay' | 'paragraph'
   return { ...essayResult, isSimulated: true };
 }
 
+// 0. Reports whether the server has its own default Gemini key configured, without ever
+// exposing the key itself. Used by the client to show an accurate "AI ready" vs "offline"
+// status even for students/teachers who never entered a personal key in Settings.
+app.get('/api/gemini/status', (req, res) => {
+  return res.json({ hasServerKey: !!process.env.GEMINI_API_KEY });
+});
+
 // 1. AI Outline Generation Endpoint
 app.post('/api/gemini/generate', async (req, res) => {
   const { topic, type, model } = req.body;
