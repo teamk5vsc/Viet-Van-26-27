@@ -23,6 +23,7 @@ export default function DetectiveGame({ apiKey, selectedModel }: DetectiveGamePr
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [score, setScore] = useState<number | null>(null);
   const [gamePhase, setGamePhase] = useState<'setup' | 'playing' | 'review'>('setup');
+  const [isSimulated, setIsSimulated] = useState(false);
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -52,11 +53,13 @@ export default function DetectiveGame({ apiKey, selectedModel }: DetectiveGamePr
       }
       setPassage(data.passage);
       setErrors(data.errors || []);
+      setIsSimulated(!!data.isSimulated);
       setGamePhase('playing');
     } catch (err) {
       console.warn('Gemini detective generation failed, using offline mock data:', err);
       setPassage(mockData.passage);
       setErrors(mockData.errors);
+      setIsSimulated(true);
       setGamePhase('playing');
     } finally {
       setIsLoading(false);
@@ -132,6 +135,12 @@ export default function DetectiveGame({ apiKey, selectedModel }: DetectiveGamePr
 
       {gamePhase !== 'setup' && passage && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {isSimulated && (
+            <div className="lg:col-span-2 flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-2xl p-3 text-xs font-medium">
+              <span className="text-base leading-none">🔌</span>
+              <span>Đoạn văn này là mẫu minh hoạ có sẵn (chưa bật AI thật), không phải do AI viết riêng theo đề của em.</span>
+            </div>
+          )}
           {/* Passage */}
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-neutral-100 shadow-sm p-6 space-y-4">
             <div className="flex items-center space-x-2">

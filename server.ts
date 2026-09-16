@@ -1923,7 +1923,7 @@ app.post('/api/gemini/chat', async (req, res) => {
 
   const client = getGeminiClient(clientApiKey);
   if (!client) {
-    return res.json(getGenreSpecificMockChat(messages, topic, type));
+    return res.json({ ...getGenreSpecificMockChat(messages, topic, type), isSimulated: true });
   }
 
   try {
@@ -1952,10 +1952,10 @@ Hãy trả lời bằng JSON:
       responseMimeType: 'application/json',
       temperature: 0.8,
     });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
+    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
   } catch (err: any) {
     console.error('Chat error:', err);
-    return res.json(getGenreSpecificMockChat(messages, topic, type));
+    return res.json({ ...getGenreSpecificMockChat(messages, topic, type), isSimulated: true });
   }
 });
 
@@ -1976,7 +1976,8 @@ app.post('/api/gemini/transform', async (req, res) => {
         { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
         { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
         { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ]
+      ],
+      isSimulated: true
     });
   }
 
@@ -2000,7 +2001,7 @@ Trả về JSON:
       responseMimeType: 'application/json',
       temperature: 0.85,
     });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
+    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
   } catch (err: any) {
     console.error('Transform error:', err);
     // Graceful fallback to mock variations
@@ -2010,7 +2011,8 @@ Trả về JSON:
         { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
         { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
         { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ]
+      ],
+      isSimulated: true
     });
   }
 });
@@ -2029,7 +2031,8 @@ app.post('/api/gemini/detective', async (req, res) => {
         { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
         { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
       ],
-      difficulty: 'easy'
+      difficulty: 'easy',
+      isSimulated: true
     });
   }
 
@@ -2053,7 +2056,7 @@ Trả về JSON:
       responseMimeType: 'application/json',
       temperature: 0.9,
     });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
+    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
   } catch (err: any) {
     console.error('Detective error:', err);
     // Graceful fallback to mock detective passage
@@ -2064,7 +2067,8 @@ Trả về JSON:
         { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
         { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
       ],
-      difficulty: 'easy'
+      difficulty: 'easy',
+      isSimulated: true
     });
   }
 });

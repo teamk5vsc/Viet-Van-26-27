@@ -23,7 +23,7 @@ const STYLE_COLORS: Record<string, { bg: string; text: string; border: string; e
 export default function SentenceTransformer({ genreId, apiKey, selectedModel }: SentenceTransformerProps) {
   const [sentence, setSentence] = useState('');
   const [isTransforming, setIsTransforming] = useState(false);
-  const [result, setResult] = useState<{ original: string; variations: Variation[] } | null>(null);
+  const [result, setResult] = useState<{ original: string; variations: Variation[]; isSimulated?: boolean } | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   const handleTransform = async () => {
@@ -53,7 +53,7 @@ export default function SentenceTransformer({ genreId, apiKey, selectedModel }: 
       setResult(data);
     } catch (err) {
       console.warn('Gemini sentence transform failed, using offline mock result:', err);
-      setResult(getMockResult(sentence.trim()));
+      setResult({ ...getMockResult(sentence.trim()), isSimulated: true });
     } finally {
       setIsTransforming(false);
     }
@@ -102,6 +102,12 @@ export default function SentenceTransformer({ genreId, apiKey, selectedModel }: 
             animate={{ opacity: 1, y: 0 }}
             className="space-y-2.5"
           >
+            {result.isSimulated && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-xl p-2.5 text-[11px] font-medium">
+                <span className="text-sm leading-none">🔌</span>
+                <span>Đây là gợi ý minh hoạ (chưa bật AI thật) — không phải AI phân tích riêng câu văn của em.</span>
+              </div>
+            )}
             {result.variations.map((v, idx) => {
               const colors = STYLE_COLORS[v.style] || { bg: 'bg-neutral-50', text: 'text-neutral-800', border: 'border-neutral-200', emoji: '📝' };
               return (

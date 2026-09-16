@@ -6,6 +6,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   outlinePart?: { section: string; content: string[] } | null;
+  isSimulated?: boolean;
 }
 
 interface AIChatScaffoldProps {
@@ -580,11 +581,11 @@ export default function AIChatScaffold({ topic, genreId, apiKey, selectedModel }
       }
     } catch (err) {
       console.warn('Gemini chat failed, using offline mock reply:', err);
-      data = getMockReply();
+      data = { ...getMockReply(), isSimulated: true };
     }
 
     try {
-      const aiMsg: ChatMessage = { role: 'assistant', content: data.reply, outlinePart: data.suggestedOutlinePart || null };
+      const aiMsg: ChatMessage = { role: 'assistant', content: data.reply, outlinePart: data.suggestedOutlinePart || null, isSimulated: !!data.isSimulated };
       setMessages(prev => [...prev, aiMsg]);
       
       if (data.suggestedOutlinePart) {
@@ -635,6 +636,11 @@ export default function AIChatScaffold({ topic, genreId, apiKey, selectedModel }
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-br-md'
                     : 'bg-neutral-50 text-neutral-700 border border-neutral-100 rounded-bl-md'
                 }`}>
+                  {msg.role === 'assistant' && msg.isSimulated && (
+                    <div className="mb-1.5 text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                      <span>🔌</span><span>Câu trả lời minh hoạ (chưa bật AI thật)</span>
+                    </div>
+                  )}
                   {msg.content}
                   {/* Show outline suggestion card */}
                   {msg.outlinePart && (
