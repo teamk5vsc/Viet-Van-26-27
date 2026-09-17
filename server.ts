@@ -5,6 +5,7 @@ import os from 'os';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { getDynamicMockEssay } from './src/data/mockEssays';
+import { buildTextbookReferenceBlock } from './src/data/textbookStories';
 
 
 dotenv.config();
@@ -950,34 +951,10 @@ app.get('/api/gemini/status', (req, res) => {
 });
 
 // Shared reference list of Textbook (Tieng Viet 5 - Ket noi tri thuc) stories, used by every
-// prompt that may need to write about one of them (outline generation, exemplary essays).
-// IMPORTANT: only list a character name here if it has been verified against the actual
-// textbook text. Gemini's own parametric knowledge of this specific curriculum is unreliable,
-// so entries without confirmed names are intentionally left as a plot summary only — see the
-// "not sure" instruction appended below the list, which tells the model to stay generic
-// instead of inventing a confident-sounding but wrong character name.
-const TEXTBOOK_REFERENCE = `Tài liệu tham khảo về sách giáo khoa Tiếng Việt 5 mới (Bộ Kết nối tri thức - KNTT):
-- Dạng Kể chuyện sáng tạo / Bày tỏ cảm xúc về câu chuyện:
-  + "Thanh âm của gió" (Nhân vật chăn trâu gồm: Bống, anh trai của Bống, Điệp, Văn, Thành; chơi trò bịt tai nghe tiếng gió rì rào qua khe đá, xào xạc qua kẽ tre)
-  + "Cánh đồng hoa" (Nhân vật gồm: Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ cùng dọn rác và trồng hoa hướng dương, cúc bách nhật trên đồng cỏ đầu buôn làng)
-  + "Hộp quà màu thiên thanh" (Nhân vật gồm: Tân, Quang, Huệ viết thư tri ân chứa trong hộp màu xanh thiên thanh tặng cô giáo chủ nhiệm)
-  + "Giỏ hoa tháng Năm" (Nhân vật kể chuyện tri ân thầy cô giáo — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
-  + "Những con hạc giấy" (Cô bé Sa-da-cô và ước mong hòa bình qua 1000 con hạc giấy)
-  + "Bến sông tuổi thơ" (Kỷ niệm êm đềm bên bến sông quê — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
-  + "Tiếng hát của người đá" (Câu chuyện dân gian cổ tích ý nghĩa — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
-  + "Khu rừng của Mát" (Bảo vệ thiên nhiên rừng xanh, chống lâm tặc — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
-  + "Sự tích chú Tễu" (Nghệ thuật múa rối nước truyền thống — tên nhân vật cụ thể chưa xác nhận, không tự đặt tên)
-  + "Bác sĩ A-léc-xăng-đơ Y-éc-xanh" (Lòng nhân ái, tình yêu đất nước Việt Nam của vị bác sĩ người Pháp)
-- Dạng Văn tả cảnh:
-  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
-  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
-  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
-  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
-  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
-  + "Những búp chè trên cây cổ thụ" (Tả những đồi chè shan tuyết cổ thụ Tây Bắc bồng bềnh trong mây khói)
-  + "Đường quê Đồng Tháp Mười" / "Xuồng ba lá quê tôi" (Cảnh sông nước mênh mông, thanh bình của vùng Nam Bộ)
-
-QUAN TRỌNG: nếu đề bài nhắc tới một trong các câu chuyện/bài đọc trên (hoặc bất kỳ bài đọc nào khác trong chương trình Tiếng Việt 5 mới 2018), bạn BẮT BUỘC dùng đúng tên nhân vật và chi tiết cốt truyện đã liệt kê ở trên — tuyệt đối không bịa thêm câu chuyện khác. Với những tác phẩm mà tên nhân vật cụ thể chưa được xác nhận ở trên, hãy mô tả nhân vật một cách chung chung (ví dụ "bạn nhỏ trong câu chuyện", "nhân vật chính") thay vì tự đặt tên riêng — thà chung chung còn hơn bịa sai.`;
+// prompt that may need to write about one of them (outline generation, exemplary essays, chat).
+// Sourced from src/data/textbookStories.ts — see that file to add/correct a story instead of
+// editing a prompt string here.
+const TEXTBOOK_REFERENCE = buildTextbookReferenceBlock();
 
 // 1. AI Outline Generation Endpoint
 app.post('/api/gemini/generate', async (req, res) => {
