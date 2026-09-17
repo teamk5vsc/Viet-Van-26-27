@@ -347,21 +347,33 @@ export default function TeacherDashboard({
       .catch(err => console.warn('Failed to load class submissions:', err));
   }, [teacherId]);
 
-  const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score || sub.gradeAfter?.score || sub.gradeBefore?.score || 0;
+  const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score ?? sub.gradeAfter?.score ?? sub.gradeBefore?.score ?? 0;
+  const maxScoreOf = (sub: OutlineSubmission) => {
+    // maxScore defaults to 100 when missing, for legacy AI grades (always /100) and
+    // for a teacherReview saved before this field existed.
+    if (sub.teacherReview) return sub.teacherReview.maxScore || 100;
+    if (sub.gradeAfter || sub.gradeBefore) return 100;
+    return 0;
+  };
+  const isRated = (sub: OutlineSubmission) => !!(sub.teacherReview || sub.gradeAfter || sub.gradeBefore);
+  // Percentage, not raw points — submissions can be graded out of different point
+  // totals (an 8-point rubric one week, 100 the next), so raw scores aren't
+  // comparable across submissions when averaging.
+  const percentOf = (sub: OutlineSubmission) => (maxScoreOf(sub) > 0 ? (scoreOf(sub) / maxScoreOf(sub)) * 100 : 0);
   const getStudentSubmissions = (studentId: string): OutlineSubmission[] => submissionsByStudent[studentId] || [];
 
   const selectedStudent = classInfo?.students.find(s => s.id === selectedStudentId) || null;
   const selectedSubmissions = selectedStudent ? getStudentSubmissions(selectedStudent.id) : [];
-  const selectedRatedScores = selectedSubmissions.map(scoreOf).filter(sc => sc > 0);
-  const selectedAvgScore = selectedRatedScores.length > 0
-    ? Math.round(selectedRatedScores.reduce((a, b) => a + b, 0) / selectedRatedScores.length)
+  const selectedRatedPercents = selectedSubmissions.filter(isRated).map(percentOf);
+  const selectedAvgScore = selectedRatedPercents.length > 0
+    ? Math.round(selectedRatedPercents.reduce((a, b) => a + b, 0) / selectedRatedPercents.length)
     : 0;
 
   // Class-wide stats
   const allStudentStats = classInfo?.students.map(s => {
     const subs = getStudentSubmissions(s.id);
-    const scores = subs.map(scoreOf).filter(sc => sc > 0);
-    const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const percents = subs.filter(isRated).map(percentOf);
+    const avg = percents.length > 0 ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) : 0;
     return { ...s, submissions: subs, avgScore: avg, count: subs.length };
   }) || [];
 
@@ -791,15 +803,15 @@ export default function TeacherDashboard({
                     <div className="space-y-2">
                       <h5 className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Lịch sử luyện tập</h5>
                       {selectedSubmissions.map((sub, idx) => {
-                        const sc = scoreOf(sub);
+                        const rated = isRated(sub);
                         return (
                           <div key={idx} className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-100 flex items-center justify-between">
                             <div className="flex-1">
                               <p className="text-xs font-bold text-neutral-800">{sub.topic}</p>
                               <p className="text-[10px] text-neutral-400">{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</p>
                             </div>
-                            {sc > 0 ? (
-                              <span className="text-[10px] font-bold text-emerald-600">{sc}đ</span>
+                            {rated ? (
+                              <span className="text-[10px] font-bold text-emerald-600">{scoreOf(sub)}/{maxScoreOf(sub)}đ</span>
                             ) : (
                               <span className="text-[10px] font-bold text-neutral-400">Chưa chấm</span>
                             )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment, RubricCriteria } from './types';
+import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment, RubricItem } from './types';
 import SyllabusTab from './components/SyllabusTab';
 import AIOutlineHelper from './components/AIOutlineHelper';
 import PortfolioTab from './components/PortfolioTab';
@@ -25,23 +25,28 @@ const AI_MODELS = [
 
 // Default empty student profile builder
 function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmission[] = [], className: string = ''): StudentProfile {
-  // Score of record for a submission: the teacher's manual rating is the source of
-  // truth now that AI auto-grading has been removed; gradeAfter/gradeBefore only
-  // matter for older submissions saved before that change.
-  const scoreOf = (s: OutlineSubmission) => s.teacherReview?.score || s.gradeAfter?.score || s.gradeBefore?.score || 0;
-  const scores = submissions.map(scoreOf).filter(s => s > 0);
+  // Score of record for a submission, as a percentage — the teacher's manual rating
+  // is the source of truth now that AI auto-grading has been removed (gradeAfter/
+  // gradeBefore only matter for older submissions saved before that change).
+  // Percentage is necessary because the teacher can grade different submissions out
+  // of different point totals (an 8-point rubric one week, 100 the next), so raw
+  // points aren't comparable across submissions.
+  const percentOf = (s: OutlineSubmission): number | null => {
+    // maxScore defaults to 100 when missing, for a teacherReview saved before this
+    // field existed (and legacy AI grades, which were always out of 100).
+    if (s.teacherReview) return (s.teacherReview.score / (s.teacherReview.maxScore || 100)) * 100;
+    const legacy = s.gradeAfter?.score ?? s.gradeBefore?.score;
+    return legacy != null ? legacy : null;
+  };
+  const scores = submissions.map(percentOf).filter((s): s is number => s !== null);
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const level = avgScore >= 85 ? 'Master Outliner 🎖️' : avgScore >= 70 ? 'Nhà văn tập sự ✍️' : avgScore >= 50 ? 'Người học chăm chỉ 📖' : 'Bạn mới bắt đầu 🌱';
 
-  // Prefer the teacher's own per-criterion scores (real data) over the weighted
-  // guess derived from the overall score, for whichever submissions have them.
-  const rubricSources = submissions
-    .map(s => s.teacherReview?.criteriaScores || s.gradeAfter?.criteriaScores || s.gradeBefore?.criteriaScores)
-    .filter((c): c is RubricCriteria => !!c);
-  const avgCriterion = (key: keyof RubricCriteria, max: number, fallbackWeight: number) =>
-    rubricSources.length > 0
-      ? Math.round((rubricSources.reduce((sum, c) => sum + c[key], 0) / rubricSources.length / max) * 100)
-      : avgScore > 0 ? Math.min(Math.round(avgScore * fallbackWeight), 100) : 0;
+  // The teacher's rubric criteria are free-form per submission (she names them to
+  // fit whatever essay type it is), so they can't be averaged into the fixed five
+  // skill buckets below by name. The skill map is instead a weighted guess derived
+  // from the overall percentage score, same as before rubric grading existed.
+  const skillFromScore = (weight: number) => (avgScore > 0 ? Math.min(Math.round(avgScore * weight), 100) : 0);
 
   return {
     id: student.id,
@@ -51,17 +56,17 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
     level,
     avgScore,
     outlineCount: submissions.length,
-    progressScore: scores.length >= 2 ? scores[scores.length - 1] - scores[0] : 0,
+    progressScore: scores.length >= 2 ? Math.round(scores[scores.length - 1] - scores[0]) : 0,
     timeline: submissions.slice(-6).map((s, i) => ({
       month: `Bài ${i + 1}`,
-      score: scoreOf(s)
+      score: Math.round(percentOf(s) || 0)
     })),
     skillMap: {
-      understand: avgCriterion('understand', 20, 0.95),
-      structure: avgCriterion('structure', 20, 0.9),
-      development: avgCriterion('development', 25, 0.85),
-      creativity: avgCriterion('creativity', 20, 0.88),
-      logic: avgCriterion('logic', 15, 0.82),
+      understand: skillFromScore(0.95),
+      structure: skillFromScore(0.9),
+      development: skillFromScore(0.85),
+      creativity: skillFromScore(0.88),
+      logic: skillFromScore(0.82),
     },
     styleAttributes: {
       tag: submissions.length > 0 ? 'Đang phát triển phong cách' : 'Chưa có dữ liệu',
@@ -510,9 +515,9 @@ export default function App() {
   // Assumes customSavedOutlines already holds this student's submissions, which is
   // true both for the student's own session and for a teacher viewing via
   // onViewStudentPortfolio above.
-  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, criteriaScores: RubricCriteria, comment: string) => {
+  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => {
     const updated = customSavedOutlines.map(s =>
-      s.id === submissionId ? { ...s, teacherReview: { score, criteriaScores, comment, ratedAt: new Date().toISOString() } } : s
+      s.id === submissionId ? { ...s, teacherReview: { score, maxScore, criteriaScores, comment, ratedAt: new Date().toISOString() } } : s
     );
     setCustomSavedOutlines(updated);
     localStorage.setItem(`vm5_submissions_${studentId}`, JSON.stringify(updated));
@@ -1401,7 +1406,7 @@ export default function App() {
                 studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)}
                 customSavedOutlines={customSavedOutlines}
                 isTeacher={isTeacherAuthenticated}
-                onRateSubmission={currentStudent ? (submissionId, score, criteriaScores, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, criteriaScores, comment) : undefined}
+                onRateSubmission={currentStudent ? (submissionId, score, maxScore, criteriaScores, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, maxScore, criteriaScores, comment) : undefined}
               />
             </motion.div>
           )}

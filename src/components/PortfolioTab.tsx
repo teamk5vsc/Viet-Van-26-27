@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { OutlineSubmission, StudentProfile, RubricCriteria } from '../types';
+import { OutlineSubmission, StudentProfile, RubricItem } from '../types';
 import { SYLLABUS_DATA } from '../data/syllabus';
 import { STRENGTH_CARDS } from '../data/strengthCards';
 import {
   Award, TrendingUp, BookOpen, Clock, Heart, Calendar,
-  Map, FileText, ChevronRight, Bookmark, ArrowRight, Printer, Star, User, PenLine
+  Map, FileText, ChevronRight, Bookmark, ArrowRight, Printer, Star, User, PenLine, Plus, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -15,26 +15,31 @@ interface PortfolioTabProps {
   studentProfile: StudentProfile;
   customSavedOutlines: OutlineSubmission[];
   isTeacher?: boolean;
-  onRateSubmission?: (submissionId: string, score: number, criteriaScores: RubricCriteria, comment: string) => void;
+  onRateSubmission?: (submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => void;
 }
 
 // Score of record for a submission: the teacher's manual rating, falling back to an
-// old AI-graded score if this submission predates the switch to manual grading.
-const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score || sub.gradeAfter?.score || sub.gradeBefore?.score || 0;
+// old AI-graded score (always out of 100) if this submission predates manual grading.
+const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score ?? sub.gradeAfter?.score ?? sub.gradeBefore?.score ?? 0;
+const maxScoreOf = (sub: OutlineSubmission) => {
+  // maxScore defaults to 100 when missing, both for legacy AI grades (always /100)
+  // and for a teacherReview saved before this field existed.
+  if (sub.teacherReview) return sub.teacherReview.maxScore || 100;
+  if (sub.gradeAfter || sub.gradeBefore) return 100;
+  return 0;
+};
+// Percentage form, for averaging across submissions whose point totals differ
+// (an 8-point rubric and a 100-point one aren't comparable as raw numbers).
+const percentOf = (sub: OutlineSubmission) => (maxScoreOf(sub) > 0 ? (scoreOf(sub) / maxScoreOf(sub)) * 100 : 0);
 
-// The rubric the teacher fills in by hand. Labels + max points must sum to 100.
-const RUBRIC_ITEMS: { key: keyof RubricCriteria; label: string; max: number }[] = [
-  { key: 'understand', label: 'Hiểu đề & yêu cầu', max: 20 },
-  { key: 'structure', label: 'Bố cục 3 phần', max: 20 },
-  { key: 'development', label: 'Phát triển ý', max: 25 },
-  { key: 'creativity', label: 'Sáng tạo, hình ảnh', max: 20 },
-  { key: 'logic', label: 'Logic, mạch lạc', max: 15 },
-];
-const EMPTY_CRITERIA: Record<keyof RubricCriteria, string> = { understand: '', structure: '', development: '', creativity: '', logic: '' };
+type DraftRow = { name: string; max: string; score: string };
+const blankRow = (): DraftRow => ({ name: '', max: '', score: '' });
 
 // Shows the teacher's rating for a saved essay, and — for the teacher only —
-// a small form to set or update it. Remounts (via the parent's `key`) whenever
-// the selected submission changes, so its local draft state always starts fresh.
+// a form to build whatever rubric fits this essay (the teacher names each
+// criterion and sets its own point value; the app only adds up the total).
+// Remounts (via the parent's `key`) whenever the selected submission changes,
+// so its local draft state always starts fresh.
 function TeacherReviewBlock({
   submission,
   isTeacher,
@@ -42,32 +47,34 @@ function TeacherReviewBlock({
 }: {
   submission: OutlineSubmission;
   isTeacher: boolean;
-  onSave?: (submissionId: string, score: number, criteriaScores: RubricCriteria, comment: string) => void;
+  onSave?: (submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => void;
 }) {
   const existing = submission.teacherReview;
   const [isEditing, setIsEditing] = useState(!existing);
-  const [criteria, setCriteria] = useState<Record<keyof RubricCriteria, string>>(() =>
-    existing?.criteriaScores
-      ? {
-          understand: existing.criteriaScores.understand.toString(),
-          structure: existing.criteriaScores.structure.toString(),
-          development: existing.criteriaScores.development.toString(),
-          creativity: existing.criteriaScores.creativity.toString(),
-          logic: existing.criteriaScores.logic.toString(),
-        }
-      : EMPTY_CRITERIA
+  const [rows, setRows] = useState<DraftRow[]>(() =>
+    existing?.criteriaScores && existing.criteriaScores.length > 0
+      ? existing.criteriaScores.map(c => ({ name: c.name, max: c.max.toString(), score: c.score.toString() }))
+      : [blankRow(), blankRow(), blankRow()]
   );
   const [comment, setComment] = useState(existing?.comment || '');
 
-  const total = RUBRIC_ITEMS.reduce((sum, item) => sum + (Number(criteria[item.key]) || 0), 0);
-  const allFilled = RUBRIC_ITEMS.every(item => criteria[item.key].trim() !== '' && !Number.isNaN(Number(criteria[item.key])));
+  const updateRow = (idx: number, patch: Partial<DraftRow>) => {
+    setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  };
+  const addRow = () => setRows([...rows, blankRow()]);
+  const removeRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
+
+  const usableRows = rows.filter(r => r.name.trim() !== '' && r.max.trim() !== '');
+  const total = usableRows.reduce((sum, r) => sum + (Number(r.score) || 0), 0);
+  const maxTotal = usableRows.reduce((sum, r) => sum + (Number(r.max) || 0), 0);
+  const canSave = usableRows.length > 0 && usableRows.every(r => !Number.isNaN(Number(r.max)) && Number(r.max) > 0 && !Number.isNaN(Number(r.score)));
 
   if (isTeacher) {
     if (!isEditing && existing) {
       return (
         <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
-            <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Đánh giá của cô: {existing.score}/100đ</strong>
+            <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Đánh giá của cô: {existing.score}/{existing.maxScore}đ</strong>
             <button
               onClick={() => setIsEditing(true)}
               className="text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center space-x-1 cursor-pointer"
@@ -76,12 +83,12 @@ function TeacherReviewBlock({
               <span>Sửa</span>
             </button>
           </div>
-          {existing.criteriaScores && (
+          {existing.criteriaScores && existing.criteriaScores.length > 0 && (
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-purple-800">
-              {RUBRIC_ITEMS.map(item => (
-                <div key={item.key} className="flex justify-between">
-                  <span>{item.label}</span>
-                  <span className="font-bold">{existing.criteriaScores![item.key]}/{item.max}</span>
+              {existing.criteriaScores.map((item, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{item.name}</span>
+                  <span className="font-bold">{item.score}/{item.max}</span>
                 </div>
               ))}
             </div>
@@ -93,27 +100,62 @@ function TeacherReviewBlock({
 
     return (
       <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2.5">
-        <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Chấm điểm bài viết này</strong>
+        <div>
+          <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Chấm điểm bài viết này</strong>
+          <p className="text-[10px] text-purple-600 mt-0.5">Tự đặt tiêu chí và thang điểm phù hợp với dạng bài — app chỉ cộng tổng giúp cô.</p>
+        </div>
         <div className="space-y-1.5">
-          {RUBRIC_ITEMS.map(item => (
-            <div key={item.key} className="flex items-center gap-2">
-              <span className="text-[11px] text-purple-800 flex-1">{item.label}</span>
+          <div className="flex items-center gap-2 text-[9px] font-bold text-purple-500 uppercase pl-0.5">
+            <span className="flex-1">Tiêu chí</span>
+            <span className="w-14 text-center">Điểm</span>
+            <span className="w-14 text-center">Tối đa</span>
+            <span className="w-5" />
+          </div>
+          {rows.map((row, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={row.name}
+                onChange={(e) => updateRow(idx, { name: e.target.value })}
+                placeholder="VD: Bố cục 3 phần"
+                className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-purple-200 text-xs text-purple-900 focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+              />
               <input
                 type="number"
                 min={0}
-                max={item.max}
-                value={criteria[item.key]}
-                onChange={(e) => setCriteria({ ...criteria, [item.key]: e.target.value })}
+                value={row.score}
+                onChange={(e) => updateRow(idx, { score: e.target.value })}
                 placeholder="0"
-                className="w-16 px-2 py-1 rounded-lg border border-purple-200 text-xs font-bold text-purple-900 text-right focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+                className="w-14 px-1.5 py-1 rounded-lg border border-purple-200 text-xs font-bold text-purple-900 text-center focus:outline-hidden focus:ring-2 focus:ring-purple-300"
               />
-              <span className="text-[10px] text-purple-500 w-10">/ {item.max}đ</span>
+              <input
+                type="number"
+                min={0}
+                value={row.max}
+                onChange={(e) => updateRow(idx, { max: e.target.value })}
+                placeholder="0"
+                className="w-14 px-1.5 py-1 rounded-lg border border-purple-200 text-xs text-purple-900 text-center focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+              />
+              <button
+                onClick={() => removeRow(idx)}
+                className="w-5 h-5 flex items-center justify-center text-purple-300 hover:text-red-500 cursor-pointer shrink-0"
+                aria-label="Xoá tiêu chí"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           ))}
+          <button
+            onClick={addRow}
+            className="flex items-center space-x-1 text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer pt-0.5"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Thêm tiêu chí</span>
+          </button>
         </div>
         <div className="flex items-center justify-between pt-1.5 border-t border-purple-200/60">
           <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wide">Tổng điểm</span>
-          <span className="text-sm font-extrabold text-purple-900">{total} / 100đ</span>
+          <span className="text-sm font-extrabold text-purple-900">{total} / {maxTotal || 0}đ</span>
         </div>
         <textarea
           value={comment}
@@ -132,16 +174,14 @@ function TeacherReviewBlock({
             </button>
           )}
           <button
-            disabled={!allFilled}
+            disabled={!canSave}
             onClick={() => {
-              const criteriaScores: RubricCriteria = {
-                understand: Number(criteria.understand),
-                structure: Number(criteria.structure),
-                development: Number(criteria.development),
-                creativity: Number(criteria.creativity),
-                logic: Number(criteria.logic),
-              };
-              onSave?.(submission.id, total, criteriaScores, comment.trim());
+              const criteriaScores: RubricItem[] = usableRows.map(r => ({
+                name: r.name.trim(),
+                max: Number(r.max),
+                score: Number(r.score) || 0,
+              }));
+              onSave?.(submission.id, total, maxTotal, criteriaScores, comment.trim());
               setIsEditing(false);
             }}
             className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
@@ -157,13 +197,13 @@ function TeacherReviewBlock({
   if (existing) {
     return (
       <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2">
-        <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Nhận xét của cô: {existing.score}/100đ</strong>
-        {existing.criteriaScores && (
+        <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Nhận xét của cô: {existing.score}/{existing.maxScore}đ</strong>
+        {existing.criteriaScores && existing.criteriaScores.length > 0 && (
           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-purple-800">
-            {RUBRIC_ITEMS.map(item => (
-              <div key={item.key} className="flex justify-between">
-                <span>{item.label}</span>
-                <span className="font-bold">{existing.criteriaScores![item.key]}/{item.max}</span>
+            {existing.criteriaScores.map((item, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span>{item.name}</span>
+                <span className="font-bold">{item.score}/{item.max}</span>
               </div>
             ))}
           </div>
@@ -194,10 +234,14 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
   // Growth calculations
   const totalSubmissions = allSubmissions.length;
   // Average only counts submissions the teacher has actually rated — an unrated
-  // essay contributes no score rather than a made-up default.
-  const ratedSubmissions = allSubmissions.filter(sub => scoreOf(sub) > 0);
+  // essay contributes no score rather than a made-up default. Rated-ness checks
+  // for a review at all (not score > 0) so a legitimate 0-point grade still counts.
+  // Scores are averaged as percentages since different submissions can be graded
+  // out of different point totals (an 8-point rubric vs a 100-point one).
+  const isRated = (sub: OutlineSubmission) => !!(sub.teacherReview || sub.gradeAfter || sub.gradeBefore);
+  const ratedSubmissions = allSubmissions.filter(isRated);
   const averageAllScores = ratedSubmissions.length > 0
-    ? Math.round(ratedSubmissions.reduce((acc, sub) => acc + scoreOf(sub), 0) / ratedSubmissions.length)
+    ? Math.round(ratedSubmissions.reduce((acc, sub) => acc + percentOf(sub), 0) / ratedSubmissions.length)
     : 0;
 
   return (
@@ -514,7 +558,7 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                     <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                       {allSubmissions.map((sub, idx) => {
                         const isChosen = selectedSubmission?.id === sub.id;
-                        const scoreDisp = scoreOf(sub);
+                        const rated = isRated(sub);
                         const genreMetadata = SYLLABUS_DATA.find(g => g.id === sub.type);
 
                         return (
@@ -534,9 +578,9 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                                 </span>
                                 <h5 className="text-xs font-bold leading-tight break-words">{sub.topic}</h5>
                               </div>
-                              {scoreDisp > 0 ? (
+                              {rated ? (
                                 <span className="bg-amber-600 text-white font-bold text-[11px] py-0.5 px-2 rounded-md shrink-0">
-                                  {scoreDisp}đ
+                                  {scoreOf(sub)}/{maxScoreOf(sub)}đ
                                 </span>
                               ) : (
                                 <span className="bg-neutral-200 text-neutral-500 font-bold text-[10px] py-0.5 px-2 rounded-md shrink-0">

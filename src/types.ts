@@ -85,9 +85,16 @@ export interface SampleEssayResult {
   isSimulated?: boolean; // Indicates if this is a static mock/simulated fallback
 }
 
+export interface RubricItem {
+  name: string; // free text, e.g. "Bố cục" — the teacher names it to fit the essay type
+  max: number; // points this criterion is worth, teacher-defined
+  score: number; // points awarded, 0..max
+}
+
 export interface TeacherReview {
-  score: number; // 0-100, set by the teacher (never AI-generated) — the sum of criteriaScores when provided
-  criteriaScores?: RubricCriteria;
+  score: number; // points awarded, set by the teacher (never AI-generated) — sum of criteriaScores' score
+  maxScore: number; // total points possible for this grading — sum of criteriaScores' max (100 if no criteria were used)
+  criteriaScores?: RubricItem[]; // teacher-defined criteria, free-form to fit whatever essay type this is
   comment?: string;
   ratedAt: string;
 }
