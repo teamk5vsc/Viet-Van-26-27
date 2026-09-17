@@ -53,20 +53,28 @@ function HeroDecorations() {
   );
 }
 
-function HeroIllustration() {
+function HeroBackground() {
   return (
-    <div
-      className="relative h-40 sm:h-full w-full sm:w-[55%] shrink-0 sm:self-stretch"
-      style={{
-        maskImage: 'linear-gradient(to right, transparent 0%, black 14%)',
-        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 14%)',
-      }}
-    >
+    <div className="absolute inset-0" aria-hidden="true">
       <img
         src="/hero-illustration.jpg"
-        alt="Cú Văn cùng hai bạn nhỏ đang đọc và viết văn"
+        alt=""
         loading="eager"
-        className="h-full w-full object-cover object-[65%_50%] sm:object-[35%_50%]"
+        className="h-full w-full object-cover object-[62%_50%]"
+      />
+      {/* Scrim so the headline stays readable: opaque orange on the left where
+          the text sits, fading out toward the right to reveal the photo. */}
+      <div
+        className="absolute inset-0 hidden sm:block"
+        style={{
+          background: 'linear-gradient(100deg, #FFA329 0%, #FFA329 30%, rgba(255,163,41,0.75) 45%, rgba(255,163,41,0.25) 62%, rgba(255,163,41,0) 78%)',
+        }}
+      />
+      <div
+        className="absolute inset-0 sm:hidden"
+        style={{
+          background: 'linear-gradient(to bottom, #FFA329 0%, #FFA329 38%, rgba(255,163,41,0.55) 60%, rgba(255,163,41,0.15) 80%)',
+        }}
       />
     </div>
   );
@@ -74,7 +82,7 @@ function HeroIllustration() {
 
 function HeroContent({ studentName }: VietMasterHeroProps) {
   return (
-    <div className="relative z-10 w-full sm:w-[45%] flex flex-col justify-center gap-4 sm:gap-5 px-5 py-8 sm:px-8 sm:py-10">
+    <div className="relative z-10 w-full sm:max-w-[45%] flex flex-col justify-center gap-4 sm:gap-5 px-5 py-8 sm:px-8 sm:py-10">
       <div>
         <h1
           className="font-heading font-extrabold leading-[1.15] text-[26px] sm:text-[34px] lg:text-[40px]"
@@ -108,12 +116,11 @@ export default function VietMasterHero({ studentName }: VietMasterHeroProps) {
         minHeight: '220px',
         borderRadius: '24px',
         boxShadow: '0 8px 24px rgba(140,80,20,0.18)',
-        background: 'linear-gradient(135deg, #FFB238 0%, #FFA329 100%)',
       }}
     >
+      <HeroBackground />
       <HeroDecorations />
       <HeroContent studentName={studentName} />
-      <HeroIllustration />
     </div>
   );
 }
