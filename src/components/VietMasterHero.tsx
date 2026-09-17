@@ -13,7 +13,7 @@ export default function VietMasterHero() {
     >
       <img
         src="/hero-illustration.jpg"
-        alt="Cú Văn cùng hai bạn nhỏ đang đọc và viết văn"
+        alt="Mỗi bài văn là một cuộc phiêu lưu! Ý tưởng đã sẵn sàng — mình cùng viết nhé. Cú Văn cùng hai bạn nhỏ đang đọc và viết văn."
         loading="eager"
         className="h-full w-full object-cover"
       />
