@@ -486,7 +486,6 @@ export default function TeacherDashboard({
                   {[
                     { id: 'syllabus', label: '📚 Thư viện dạng bài', desc: 'Thư viện lý thuyết, đề gợi ý và các quy tắc viết văn AI' },
                     { id: 'helper', label: '💡 Dàn ý thông minh AI', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
-                    { id: 'game', label: '🎮 Trò chơi sắp đặt', desc: 'Trò chơi kéo thả sắp xếp bố cục câu chuyện' },
                     { id: 'detective', label: '🕵️ Thám tử bắt lỗi', desc: 'Trò chơi tìm lỗi văn bản và đối chiếu kết quả' },
                     { id: 'portfolio', label: '🏆 Portfolio Tiến Bộ', desc: 'Hồ sơ năng lực học tập và bài viết mẫu đã lưu' },
                   ].map((tabItem) => {
@@ -1164,7 +1163,6 @@ export default function TeacherDashboard({
                     {[
                       { id: 'syllabus', label: '📚 Thư viện dạng bài', desc: 'Thư viện lý thuyết, đề gợi ý và các quy tắc viết văn AI' },
                       { id: 'helper', label: '💡 Dàn ý thông minh AI', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
-                      { id: 'game', label: '🎮 Trò chơi sắp đặt', desc: 'Trò chơi kéo thả sắp xếp bố cục câu chuyện' },
                       { id: 'detective', label: '🕵️ Thám tử bắt lỗi', desc: 'Trò chơi tìm lỗi văn bản và đối chiếu kết quả' },
                       { id: 'portfolio', label: '🏆 Portfolio Tiến Bộ', desc: 'Hồ sơ năng lực học tập và bài viết mẫu đã lưu' },
                     ].map((tabItem) => {
