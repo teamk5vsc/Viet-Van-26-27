@@ -295,21 +295,25 @@ export default function SyllabusTab({ onStartWriting }: SyllabusTabProps) {
                           <span>{theme.emoji}</span>
                           <span>{cat.name}</span>
                         </span>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {cat.words.map((word) => {
-                            const isCopied = copiedWord === word;
+                            const isCopied = copiedWord === word.term;
                             return (
                               <button
-                                key={word}
-                                onClick={() => handleCopy(word)}
-                                className={`px-2.5 py-1 text-xs rounded-full border flex items-center space-x-1 cursor-pointer transition-all duration-200 ${
+                                key={word.term}
+                                onClick={() => handleCopy(word.term)}
+                                title="Bấm để sao chép"
+                                className={`text-left px-2.5 py-1.5 rounded-xl border flex flex-col gap-0.5 cursor-pointer transition-all duration-200 ${
                                   isCopied
                                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm'
                                     : 'bg-white/80 hover:bg-white text-neutral-700 border-neutral-200/80 hover:border-amber-300 hover:shadow-sm active:scale-95'
                                 }`}
                               >
-                                <span>{word}</span>
-                                {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-neutral-400 opacity-50" />}
+                                <span className="flex items-center gap-1 text-xs font-semibold">
+                                  <span>{word.term}</span>
+                                  {isCopied ? <Check className="w-3 h-3 text-emerald-600 shrink-0" /> : <Copy className="w-3 h-3 text-neutral-400 opacity-50 shrink-0" />}
+                                </span>
+                                <span className="text-[10px] text-neutral-500 leading-snug font-normal">{word.meaning}</span>
                               </button>
                             );
                           })}
