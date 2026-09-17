@@ -4,12 +4,11 @@ import SyllabusTab from './components/SyllabusTab';
 import AIOutlineHelper from './components/AIOutlineHelper';
 import PortfolioTab from './components/PortfolioTab';
 import TeacherDashboard from './components/TeacherDashboard';
-import DetectiveGame from './components/DetectiveGame';
 import VietMasterHero from './components/VietMasterHero';
 import { 
   BookOpen, Sparkles, Award, Users, Compass,
   HelpCircle, Lightbulb, Heart, Settings,
-  Key, ExternalLink, X, Cpu, Zap, Star, Shield, Search, UserPlus, Lock, ArrowLeft, ClipboardList
+  Key, ExternalLink, X, Cpu, Zap, Star, Shield, UserPlus, Lock, ArrowLeft, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -70,7 +69,7 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
 const AVATAR_OPTIONS = ['🎒', '⚽', '🎨', '🌸', '🤖', '🦋', '🎵', '🌟', '🐶', '🐱', '🦁', '🐻', '🎯', '📚', '✈️', '🚀'];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'syllabus' | 'helper' | 'detective' | 'portfolio' | 'teacher'>('syllabus');
+  const [activeTab, setActiveTab] = useState<'syllabus' | 'helper' | 'portfolio' | 'teacher'>('syllabus');
   
   // Custom saved outlines tracked in client app state
   const [customSavedOutlines, setCustomSavedOutlines] = useState<OutlineSubmission[]>(() => {
@@ -109,7 +108,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : {
       syllabus: { student: true, guest: true },
       helper: { student: true, guest: true },
-      detective: { student: true, guest: true },
       portfolio: { student: true, guest: true }
     };
   });
@@ -557,7 +555,6 @@ export default function App() {
   const tabs = [
     { id: 'syllabus' as const, label: '📚 Thư viện dạng bài', icon: BookOpen, color: 'text-amber-600' },
     { id: 'helper' as const, label: '💡 Dàn ý thông minh AI', icon: Sparkles, color: 'text-yellow-500' },
-    { id: 'detective' as const, label: '🕵️ Thám tử bắt lỗi', icon: Search, color: 'text-rose-500' },
     { id: 'portfolio' as const, label: '🏆 Portfolio Tiến Bộ', icon: Award, color: 'text-purple-500' },
   ];
 
@@ -1356,18 +1353,6 @@ export default function App() {
                 selectedModel={selectedModel}
                 currentStudent={currentStudent}
               />
-            </motion.div>
-          )}
-
-          {activeTab === 'detective' && (
-            <motion.div
-              key="detective-view"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
-            >
-              <DetectiveGame apiKey={apiKey} selectedModel={selectedModel} />
             </motion.div>
           )}
 

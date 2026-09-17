@@ -1999,62 +1999,6 @@ Trả về JSON:
   }
 });
 
-// 6. Detective Game Endpoint (Thám tử bắt lỗi)
-app.post('/api/gemini/detective', async (req, res) => {
-  const { topic, type, errorType, model } = req.body;
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    return res.json({
-      passage: 'Sáng nay em đi học. Trường em rất đẹp. Cây bàng rất to. Hôm qua em ăn phở. Bạn bè rất vui. Trường em có sân rộng. Em thích đi học. Cô giáo dạy toán rất hay. Em rất thích trường em.',
-      errors: [
-        { location: 'Câu 4', type: 'Lạc đề', suggestion: 'Câu "Hôm qua em ăn phở" không liên quan đến tả trường học. Nên thay bằng chi tiết về cảnh trường.' },
-        { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
-        { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
-      ],
-      difficulty: 'easy',
-      isSimulated: true
-    });
-  }
-
-  try {
-    const prompt = `Bạn là giáo viên Tiếng Việt lớp 5. Hãy viết một đoạn văn ngắn (5-8 câu) có LỖI CHỦ ĐÍCH để học sinh luyện tập phát hiện lỗi.
-
-Đề bài: "${topic || 'Tả cảnh trường em'}"
-Dạng bài: ${type || 'ta-canh'}
-Loại lỗi cần cài: ${errorType || 'thiếu cảm xúc, lạc đề nhẹ'}
-
-Trả về JSON:
-{
-  "passage": "Đoạn văn có lỗi chủ đích (5-8 câu)",
-  "errors": [
-    { "location": "Vị trí lỗi (VD: Câu 3)", "type": "Loại lỗi", "suggestion": "Gợi ý sửa" }
-  ],
-  "difficulty": "easy|medium|hard"
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.9,
-    });
-    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
-  } catch (err: any) {
-    console.error('Detective error:', err);
-    // Graceful fallback to mock detective passage
-    return res.json({
-      passage: 'Sáng nay em đi học. Trường em rất đẹp. Cây bàng rất to. Hôm qua em ăn phở. Bạn bè rất vui. Trường em có sân rộng. Em thích đi học. Cô giáo dạy toán rất hay. Em rất thích trường em.',
-      errors: [
-        { location: 'Câu 4', type: 'Lạc đề', suggestion: 'Câu "Hôm qua em ăn phở" không liên quan đến tả trường học. Nên thay bằng chi tiết về cảnh trường.' },
-        { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
-        { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
-      ],
-      difficulty: 'easy',
-      isSimulated: true
-    });
-  }
-});
-
 interface TelemetryRecord {
   teacherId: string;
   schoolName: string;
