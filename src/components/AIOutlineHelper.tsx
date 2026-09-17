@@ -4,7 +4,7 @@ import { SYLLABUS_DATA } from '../data/syllabus';
 import {
   Sparkles, Pencil, CheckCircle2, ChevronRight, Play, RefreshCw,
   Trash2, ArrowUpRight, Check, Save,
-  BookOpen, FileText, Copy, HelpCircle
+  BookOpen, FileText, Copy, HelpCircle, PenLine
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AIChatScaffold from './AIChatScaffold';
@@ -871,7 +871,7 @@ export default function AIOutlineHelper({
   currentStudent
 }: AIOutlineHelperProps) {
   // Navigation
-  const [activeSubTab, setActiveSubTab] = useState<'create' | 'chat' | 'sample'>('create');
+  const [activeSubTab, setActiveSubTab] = useState<'create' | 'chat' | 'sample' | 'write'>('create');
   
   // Core state inputs
   const [selectedGenreId, setSelectedGenreId] = useState<EssayType>((initialGenreId as EssayType) || 'ta-canh');
@@ -900,6 +900,10 @@ export default function AIOutlineHelper({
   const [activeHighlights, setActiveHighlights] = useState<string[]>(['imagery', 'emotion', 'rhetorical', 'vocabulary']);
   const [hoveredHighlight, setHoveredHighlight] = useState<SampleHighlight | null>(null);
   const [isEssaySaved, setIsEssaySaved] = useState<boolean>(false);
+
+  // Tab: Student's own writing (no AI involved) — saved as-is for the teacher to grade
+  const [studentEssayDraft, setStudentEssayDraft] = useState<string>('');
+  const [isStudentEssaySaved, setIsStudentEssaySaved] = useState<boolean>(false);
 
   // Sync initial genre and topics from parent selection
   useEffect(() => {
@@ -998,6 +1002,25 @@ export default function AIOutlineHelper({
 
     onOutlineSaved(submission);
     setIsEssaySaved(true);
+  };
+
+  const handleSaveStudentEssay = () => {
+    if (!customTopic.trim() || !studentEssayDraft.trim()) return;
+
+    const submission: OutlineSubmission = {
+      id: `outline_${Date.now()}`,
+      studentId: currentStudent?.id || 'guest',
+      studentName: currentStudent?.name || 'Khách',
+      topic: customTopic,
+      type: selectedGenreId,
+      outlineBefore: 'Học sinh tự viết trực tiếp trên app',
+      studentEssay: studentEssayDraft,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    onOutlineSaved(submission);
+    setIsStudentEssaySaved(true);
   };
 
   const renderEssayWithHighlights = (content: string, highlights: SampleHighlight[]) => {
@@ -1208,6 +1231,17 @@ export default function AIOutlineHelper({
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>🦉 Bài văn tham khảo</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('write')}
+            className={`px-3 py-2 text-[11px] font-bold rounded-lg transition cursor-pointer flex items-center space-x-1 ${
+              activeSubTab === 'write'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <PenLine className="w-3.5 h-3.5" />
+            <span>Bài viết của em</span>
           </button>
         </div>
       </div>
@@ -1582,6 +1616,57 @@ export default function AIOutlineHelper({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* SUB-TAB 4: Student writes the essay themselves — no AI, saved as-is for grading */}
+        {activeSubTab === 'write' && (
+          <div className="space-y-6">
+            <div className="p-6 bg-white/90 backdrop-blur-sm rounded-2xl border border-amber-100/50 shadow-sm space-y-4">
+              <div className="max-w-xl">
+                <h3 className="text-base font-bold text-neutral-800 flex items-center space-x-2">
+                  <PenLine className="w-5 h-5 text-amber-500" />
+                  <span>✍️ Bài viết của em</span>
+                </h3>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Tự viết bài văn của mình vào đây (không có AI viết hộ), rồi lưu vào Portfolio để cô chấm điểm nhé.
+                </p>
+              </div>
+
+              <textarea
+                value={studentEssayDraft}
+                onChange={(e) => {
+                  setStudentEssayDraft(e.target.value);
+                  setIsStudentEssaySaved(false);
+                }}
+                placeholder="Bắt đầu viết bài văn của em ở đây..."
+                rows={16}
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm text-neutral-800 leading-relaxed font-serif resize-y focus:outline-hidden focus:ring-2 focus:ring-amber-300"
+              />
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span className="text-[11px] text-neutral-400 font-semibold">
+                  {studentEssayDraft.trim().split(/\s+/).filter(Boolean).length} từ
+                </span>
+                <button
+                  onClick={handleSaveStudentEssay}
+                  disabled={!customTopic.trim() || !studentEssayDraft.trim()}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold rounded-xl text-xs flex items-center justify-center space-x-1.5 cursor-pointer shadow-md hover:shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isStudentEssaySaved ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Đã lưu bài viết vào Portfolio 🎉</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Lưu bài viết vào Portfolio 💾</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
     </div>

@@ -86,7 +86,8 @@ export interface SampleEssayResult {
 }
 
 export interface TeacherReview {
-  score: number; // 0-100, set by the teacher (never AI-generated)
+  score: number; // 0-100, set by the teacher (never AI-generated) — the sum of criteriaScores when provided
+  criteriaScores?: RubricCriteria;
   comment?: string;
   ratedAt: string;
 }
@@ -109,6 +110,7 @@ export interface OutlineSubmission {
   };
   teacherReview?: TeacherReview;
   sampleEssay?: SampleEssayResult;
+  studentEssay?: string; // The student's own writing, typed directly in the app (no AI)
   createdAt: string;
   updatedAt: string;
   emotionTag?: string; // SEL emotion tag selected by student

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment } from './types';
+import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment, RubricCriteria } from './types';
 import SyllabusTab from './components/SyllabusTab';
 import AIOutlineHelper from './components/AIOutlineHelper';
 import PortfolioTab from './components/PortfolioTab';
@@ -33,6 +33,16 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const level = avgScore >= 85 ? 'Master Outliner 🎖️' : avgScore >= 70 ? 'Nhà văn tập sự ✍️' : avgScore >= 50 ? 'Người học chăm chỉ 📖' : 'Bạn mới bắt đầu 🌱';
 
+  // Prefer the teacher's own per-criterion scores (real data) over the weighted
+  // guess derived from the overall score, for whichever submissions have them.
+  const rubricSources = submissions
+    .map(s => s.teacherReview?.criteriaScores || s.gradeAfter?.criteriaScores || s.gradeBefore?.criteriaScores)
+    .filter((c): c is RubricCriteria => !!c);
+  const avgCriterion = (key: keyof RubricCriteria, max: number, fallbackWeight: number) =>
+    rubricSources.length > 0
+      ? Math.round((rubricSources.reduce((sum, c) => sum + c[key], 0) / rubricSources.length / max) * 100)
+      : avgScore > 0 ? Math.min(Math.round(avgScore * fallbackWeight), 100) : 0;
+
   return {
     id: student.id,
     name: student.name,
@@ -47,11 +57,11 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
       score: scoreOf(s)
     })),
     skillMap: {
-      understand: avgScore > 0 ? Math.min(Math.round(avgScore * 0.95), 100) : 0,
-      structure: avgScore > 0 ? Math.min(Math.round(avgScore * 0.9), 100) : 0,
-      development: avgScore > 0 ? Math.min(Math.round(avgScore * 0.85), 100) : 0,
-      creativity: avgScore > 0 ? Math.min(Math.round(avgScore * 0.88), 100) : 0,
-      logic: avgScore > 0 ? Math.min(Math.round(avgScore * 0.82), 100) : 0,
+      understand: avgCriterion('understand', 20, 0.95),
+      structure: avgCriterion('structure', 20, 0.9),
+      development: avgCriterion('development', 25, 0.85),
+      creativity: avgCriterion('creativity', 20, 0.88),
+      logic: avgCriterion('logic', 15, 0.82),
     },
     styleAttributes: {
       tag: submissions.length > 0 ? 'Đang phát triển phong cách' : 'Chưa có dữ liệu',
@@ -500,9 +510,9 @@ export default function App() {
   // Assumes customSavedOutlines already holds this student's submissions, which is
   // true both for the student's own session and for a teacher viewing via
   // onViewStudentPortfolio above.
-  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, comment: string) => {
+  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, criteriaScores: RubricCriteria, comment: string) => {
     const updated = customSavedOutlines.map(s =>
-      s.id === submissionId ? { ...s, teacherReview: { score, comment, ratedAt: new Date().toISOString() } } : s
+      s.id === submissionId ? { ...s, teacherReview: { score, criteriaScores, comment, ratedAt: new Date().toISOString() } } : s
     );
     setCustomSavedOutlines(updated);
     localStorage.setItem(`vm5_submissions_${studentId}`, JSON.stringify(updated));
@@ -1391,7 +1401,7 @@ export default function App() {
                 studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)}
                 customSavedOutlines={customSavedOutlines}
                 isTeacher={isTeacherAuthenticated}
-                onRateSubmission={currentStudent ? (submissionId, score, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, comment) : undefined}
+                onRateSubmission={currentStudent ? (submissionId, score, criteriaScores, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, criteriaScores, comment) : undefined}
               />
             </motion.div>
           )}
