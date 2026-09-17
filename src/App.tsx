@@ -554,7 +554,7 @@ export default function App() {
 
   const tabs = [
     { id: 'syllabus' as const, label: '📚 Thư viện dạng bài', icon: BookOpen, color: 'text-amber-600' },
-    { id: 'helper' as const, label: '💡 Dàn ý thông minh AI', icon: Sparkles, color: 'text-yellow-500' },
+    { id: 'helper' as const, label: '💡 Dàn ý thông minh', icon: Sparkles, color: 'text-yellow-500' },
     { id: 'portfolio' as const, label: '🏆 Portfolio Tiến Bộ', icon: Award, color: 'text-purple-500' },
   ];
 
