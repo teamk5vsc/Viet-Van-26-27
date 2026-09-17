@@ -25,12 +25,14 @@ const AI_MODELS = [
 
 // Default empty student profile builder
 function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmission[] = [], className: string = ''): StudentProfile {
-  const scores = submissions
-    .map(s => s.gradeAfter?.score || s.gradeBefore?.score || 0)
-    .filter(s => s > 0);
+  // Score of record for a submission: the teacher's manual rating is the source of
+  // truth now that AI auto-grading has been removed; gradeAfter/gradeBefore only
+  // matter for older submissions saved before that change.
+  const scoreOf = (s: OutlineSubmission) => s.teacherReview?.score || s.gradeAfter?.score || s.gradeBefore?.score || 0;
+  const scores = submissions.map(scoreOf).filter(s => s > 0);
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const level = avgScore >= 85 ? 'Master Outliner 🎖️' : avgScore >= 70 ? 'Nhà văn tập sự ✍️' : avgScore >= 50 ? 'Người học chăm chỉ 📖' : 'Bạn mới bắt đầu 🌱';
-  
+
   return {
     id: student.id,
     name: student.name,
@@ -42,7 +44,7 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
     progressScore: scores.length >= 2 ? scores[scores.length - 1] - scores[0] : 0,
     timeline: submissions.slice(-6).map((s, i) => ({
       month: `Bài ${i + 1}`,
-      score: s.gradeAfter?.score || s.gradeBefore?.score || 0
+      score: scoreOf(s)
     })),
     skillMap: {
       understand: avgScore > 0 ? Math.min(Math.round(avgScore * 0.95), 100) : 0,
@@ -491,6 +493,27 @@ export default function App() {
       } catch (err) {
         console.warn('Failed to sync outline to server:', err);
       }
+    }
+  };
+
+  // Teacher manually scores a saved submission (replaces the old AI auto-grading).
+  // Assumes customSavedOutlines already holds this student's submissions, which is
+  // true both for the student's own session and for a teacher viewing via
+  // onViewStudentPortfolio above.
+  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, comment: string) => {
+    const updated = customSavedOutlines.map(s =>
+      s.id === submissionId ? { ...s, teacherReview: { score, comment, ratedAt: new Date().toISOString() } } : s
+    );
+    setCustomSavedOutlines(updated);
+    localStorage.setItem(`vm5_submissions_${studentId}`, JSON.stringify(updated));
+    try {
+      await fetch('/api/sync/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId, studentId, submissions: updated })
+      });
+    } catch (err) {
+      console.warn('Failed to sync teacher review to server:', err);
     }
   };
 
@@ -1364,10 +1387,11 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
             >
-              <PortfolioTab 
-                studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)} 
-                customSavedOutlines={customSavedOutlines} 
+              <PortfolioTab
+                studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)}
+                customSavedOutlines={customSavedOutlines}
                 isTeacher={isTeacherAuthenticated}
+                onRateSubmission={currentStudent ? (submissionId, score, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, comment) : undefined}
               />
             </motion.div>
           )}
@@ -1388,11 +1412,21 @@ export default function App() {
                 onSaveClass={handleSaveClass}
                 tabPermissions={tabPermissions}
                 onUpdatePermissions={handleUpdatePermissions}
-                onViewStudentPortfolio={(student) => {
+                onViewStudentPortfolio={async (student) => {
                   setCurrentStudent(student);
                   localStorage.setItem('vm5_current_student', student.id);
-                  const saved = localStorage.getItem(`vm5_submissions_${student.id}`);
-                  setCustomSavedOutlines(saved ? JSON.parse(saved) : []);
+                  // Pull from the server first — the student's submissions were made on
+                  // their own device, so this teacher's browser has no local copy of them.
+                  try {
+                    const res = await fetch(`/api/sync/submissions?teacherId=${encodeURIComponent(teacherId)}&studentId=${encodeURIComponent(student.id)}`);
+                    const data = await res.json();
+                    const subs = data.success ? data.submissions : [];
+                    setCustomSavedOutlines(subs);
+                    localStorage.setItem(`vm5_submissions_${student.id}`, JSON.stringify(subs));
+                  } catch {
+                    const saved = localStorage.getItem(`vm5_submissions_${student.id}`);
+                    setCustomSavedOutlines(saved ? JSON.parse(saved) : []);
+                  }
                   setActiveTab('portfolio');
                 }}
                 teacherId={teacherId}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ClassInfo, StudentEntry, StudentGroup, GroupAssignment } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ClassInfo, StudentEntry, StudentGroup, GroupAssignment, OutlineSubmission } from '../types';
 import { 
   Users, Award, AlertTriangle, CheckCircle, BarChart, 
   BookOpen, ChevronRight, Star, HelpCircle, FileText, Printer, Mail,
@@ -332,23 +332,36 @@ export default function TeacherDashboard({
     onSaveClass(updatedClassInfo);
   };
 
-  // Get student submissions from localStorage
-  const getStudentSubmissions = (studentId: string) => {
-    const saved = localStorage.getItem(`vm5_submissions_${studentId}`);
-    return saved ? JSON.parse(saved) : [];
-  };
+  // Submissions live on each student's own device; the teacher's browser only knows
+  // about them via the server sync, so fetch every student's submissions for this
+  // class up front instead of reading a (likely empty) local cache.
+  const [submissionsByStudent, setSubmissionsByStudent] = useState<Record<string, OutlineSubmission[]>>({});
+
+  useEffect(() => {
+    if (!teacherId) return;
+    fetch(`/api/sync/submissions?teacherId=${encodeURIComponent(teacherId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.submissions) setSubmissionsByStudent(data.submissions);
+      })
+      .catch(err => console.warn('Failed to load class submissions:', err));
+  }, [teacherId]);
+
+  const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score || sub.gradeAfter?.score || sub.gradeBefore?.score || 0;
+  const getStudentSubmissions = (studentId: string): OutlineSubmission[] => submissionsByStudent[studentId] || [];
 
   const selectedStudent = classInfo?.students.find(s => s.id === selectedStudentId) || null;
   const selectedSubmissions = selectedStudent ? getStudentSubmissions(selectedStudent.id) : [];
-  const selectedAvgScore = selectedSubmissions.length > 0 
-    ? Math.round(selectedSubmissions.reduce((acc: number, s: any) => acc + (s.gradeAfter?.score || s.gradeBefore?.score || 0), 0) / selectedSubmissions.length)
+  const selectedRatedScores = selectedSubmissions.map(scoreOf).filter(sc => sc > 0);
+  const selectedAvgScore = selectedRatedScores.length > 0
+    ? Math.round(selectedRatedScores.reduce((a, b) => a + b, 0) / selectedRatedScores.length)
     : 0;
 
   // Class-wide stats
   const allStudentStats = classInfo?.students.map(s => {
     const subs = getStudentSubmissions(s.id);
-    const scores = subs.map((sub: any) => sub.gradeAfter?.score || sub.gradeBefore?.score || 0).filter((sc: number) => sc > 0);
-    const avg = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+    const scores = subs.map(scoreOf).filter(sc => sc > 0);
+    const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     return { ...s, submissions: subs, avgScore: avg, count: subs.length };
   }) || [];
 
@@ -777,22 +790,22 @@ export default function TeacherDashboard({
                   {selectedSubmissions.length > 0 ? (
                     <div className="space-y-2">
                       <h5 className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Lịch sử luyện tập</h5>
-                      {selectedSubmissions.map((sub: any, idx: number) => (
-                        <div key={idx} className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-100 flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-xs font-bold text-neutral-800">{sub.topic}</p>
-                            <p className="text-[10px] text-neutral-400">{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</p>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            {sub.gradeBefore && (
-                              <span className="text-[10px] font-bold text-neutral-500">V1: {sub.gradeBefore.score}đ</span>
+                      {selectedSubmissions.map((sub, idx) => {
+                        const sc = scoreOf(sub);
+                        return (
+                          <div key={idx} className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-100 flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-neutral-800">{sub.topic}</p>
+                              <p className="text-[10px] text-neutral-400">{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</p>
+                            </div>
+                            {sc > 0 ? (
+                              <span className="text-[10px] font-bold text-emerald-600">{sc}đ</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-neutral-400">Chưa chấm</span>
                             )}
-                            {sub.gradeAfter && (
-                              <span className="text-[10px] font-bold text-emerald-600">V2: {sub.gradeAfter.score}đ</span>
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-neutral-400">

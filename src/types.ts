@@ -85,6 +85,12 @@ export interface SampleEssayResult {
   isSimulated?: boolean; // Indicates if this is a static mock/simulated fallback
 }
 
+export interface TeacherReview {
+  score: number; // 0-100, set by the teacher (never AI-generated)
+  comment?: string;
+  ratedAt: string;
+}
+
 export interface OutlineSubmission {
   id: string; // unique ID
   studentId: string;
@@ -101,6 +107,7 @@ export interface OutlineSubmission {
     q2_reasons: string; // Điều gì giúp bài của em tốt hơn?
     q3_learnings: string; // Lần sau em rút ra lưu ý gì?
   };
+  teacherReview?: TeacherReview;
   sampleEssay?: SampleEssayResult;
   createdAt: string;
   updatedAt: string;
