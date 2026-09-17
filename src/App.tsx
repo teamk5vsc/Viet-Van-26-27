@@ -1287,7 +1287,7 @@ export default function App() {
 
       {/* ===== HERO WELCOME BANNER ===== */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-5">
-        <VietMasterHero studentName={currentStudent?.name} />
+        <VietMasterHero />
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
