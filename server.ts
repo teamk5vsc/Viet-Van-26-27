@@ -1651,64 +1651,6 @@ Hãy trả lời bằng JSON:
   }
 });
 
-// 5. Sentence Transformer Endpoint (Biến hóa câu văn)
-app.post('/api/gemini/transform', async (req, res) => {
-  const { sentence, type, model } = req.body;
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  
-  if (!sentence) {
-    return res.status(400).json({ error: 'Câu văn không được để trống' });
-  }
-
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    return res.json({
-      original: sentence,
-      variations: [
-        { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
-        { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
-        { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ],
-      isSimulated: true
-    });
-  }
-
-  try {
-    const prompt = `Bạn là huấn luyện viên viết văn lớp 5. Học sinh viết một câu đơn giản, hãy biến hóa thành 3 phiên bản hay hơn.
-
-Câu gốc: "${sentence}"
-Dạng bài: ${type || 'ta-canh'}
-
-Trả về JSON:
-{
-  "original": "${sentence}",
-  "variations": [
-    { "style": "Nhân hóa", "text": "Câu đã biến hóa bằng nhân hóa", "explanation": "Giải thích ngắn biện pháp tu từ" },
-    { "style": "So sánh", "text": "Câu đã biến hóa bằng so sánh", "explanation": "Giải thích" },
-    { "style": "Từ láy & Giác quan", "text": "Câu đã biến hóa bằng từ láy", "explanation": "Giải thích" }
-  ]
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.85,
-    });
-    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
-  } catch (err: any) {
-    console.error('Transform error:', err);
-    // Graceful fallback to mock variations
-    return res.json({
-      original: sentence,
-      variations: [
-        { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
-        { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
-        { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ],
-      isSimulated: true
-    });
-  }
-});
-
 interface TelemetryRecord {
   teacherId: string;
   schoolName: string;
