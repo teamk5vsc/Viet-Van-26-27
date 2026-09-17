@@ -4,7 +4,6 @@ import { BookOpen, Send, Star, Pencil, Leaf } from 'lucide-react';
 
 interface VietMasterHeroProps {
   studentName?: string;
-  aiIsReady: boolean;
 }
 
 // Thick white "sticker" outline behind the orange headline, built from stacked
@@ -73,45 +72,34 @@ function HeroIllustration() {
   );
 }
 
-function HeroContent({ studentName, aiIsReady }: VietMasterHeroProps) {
+function HeroContent({ studentName }: VietMasterHeroProps) {
   return (
-    <div className="relative z-10 w-full sm:w-[45%] flex flex-col justify-center gap-3 sm:gap-4 px-5 py-6 sm:px-8 sm:py-8">
-      <span
-        className="self-start text-[11px] sm:text-xs font-bold text-white uppercase tracking-wider px-3.5 py-1.5 rounded-full border-2 border-white/85 shadow-sm"
-        style={{ backgroundColor: '#F0700B' }}
-      >
-        VietMaster 5
-      </span>
-
+    <div className="relative z-10 w-full sm:w-[45%] flex flex-col justify-center gap-4 sm:gap-5 px-5 py-8 sm:px-8 sm:py-10">
       <div>
         <h1
-          className="font-heading font-extrabold leading-[1.08] text-[26px] sm:text-[38px] lg:text-[46px]"
+          className="font-heading font-extrabold leading-[1.15] text-[26px] sm:text-[34px] lg:text-[40px]"
           style={{ fontFamily: "'Baloo 2', 'Outfit', system-ui, sans-serif", color: '#F15A24', textShadow: HEADLINE_STICKER_SHADOW }}
         >
-          Mỗi bài văn là<br />một cuộc phiêu lưu!
+          Mỗi bài văn là một cuộc phiêu lưu!
         </h1>
-        <svg className="mt-1 ml-0.5 w-40 sm:w-52 h-2.5" viewBox="0 0 200 12" fill="none">
+        <svg className="mt-2 ml-0.5 w-40 sm:w-52 h-2.5" viewBox="0 0 200 12" fill="none">
           <path d="M3 8 Q 50 2, 100 7 T 197 5" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.9" />
         </svg>
       </div>
 
-      <p className="text-sm sm:text-lg font-semibold leading-snug max-w-xs sm:max-w-sm" style={{ color: '#8A5525' }}>
-        {studentName ? (
-          <>{studentName} ơi, hôm nay mình sẽ kể câu chuyện gì nhỉ? <Pencil className="inline w-4 h-4 -mt-0.5" /></>
-        ) : (
-          <>Em có cả một thế giới trong trí tưởng tượng — hãy viết nó ra nào! <Pencil className="inline w-4 h-4 -mt-0.5" /></>
-        )}
+      <p className="text-sm sm:text-lg font-semibold leading-relaxed max-w-xs sm:max-w-sm flex items-start gap-1.5" style={{ color: '#8A5525' }}>
+        <span>
+          {studentName
+            ? `${studentName} ơi, hôm nay mình sẽ kể câu chuyện gì nhỉ?`
+            : 'Em có cả một thế giới trong trí tưởng tượng — hãy viết nó ra nào!'}
+        </span>
+        <Pencil className="w-4 h-4 mt-1 shrink-0" />
       </p>
-
-      <span className="self-start inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-white/95 bg-black/10 backdrop-blur-sm px-2.5 py-1 rounded-full ring-1 ring-white/25">
-        <span className={`w-1.5 h-1.5 rounded-full ${aiIsReady ? 'bg-emerald-500 animate-pulse-soft' : 'bg-white/60'}`} />
-        {aiIsReady ? 'AI sẵn sàng' : 'Chế độ ngoại tuyến'}
-      </span>
     </div>
   );
 }
 
-export default function VietMasterHero({ studentName, aiIsReady }: VietMasterHeroProps) {
+export default function VietMasterHero({ studentName }: VietMasterHeroProps) {
   return (
     <div
       className="relative flex flex-col sm:flex-row overflow-hidden mx-auto"
@@ -124,7 +112,7 @@ export default function VietMasterHero({ studentName, aiIsReady }: VietMasterHer
       }}
     >
       <HeroDecorations />
-      <HeroContent studentName={studentName} aiIsReady={aiIsReady} />
+      <HeroContent studentName={studentName} />
       <HeroIllustration />
     </div>
   );
