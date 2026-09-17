@@ -1189,14 +1189,9 @@ export default function App() {
                 📝
               </motion.div>
               <div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-lg font-heading font-extrabold text-white tracking-tight drop-shadow-sm">VietMaster 5</h1>
-                  <span className="hidden sm:inline-flex bg-white/25 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/30">
-                    Bản đồ ý tưởng lớp 5
-                  </span>
-                </div>
+                <h1 className="text-lg font-heading font-extrabold text-white tracking-tight drop-shadow-sm">VietMaster 5</h1>
                 <p className="text-[11px] text-white/80 font-medium mt-0.5 hidden sm:block">
-                  Huấn luyện viên rèn luyện dàn ý thông minh & Đo lường sự tiến bộ ✨
+                  Gợi mở ý tưởng ✦ Rèn cách viết ✦ Cùng tiến bộ ✨
                 </p>
               </div>
             </div>
