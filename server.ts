@@ -5,6 +5,7 @@ import os from 'os';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { getDynamicMockEssay } from './src/data/mockEssays';
+import { buildTextbookReferenceBlock } from './src/data/textbookStories';
 
 
 dotenv.config();
@@ -38,8 +39,17 @@ function getGeminiClient(apiKeyOverride?: string): GoogleGenAI | null {
   return aiInstance;
 }
 
-// Model fallback chain as per AI_INSTRUCTIONS.md
-const MODEL_FALLBACK_CHAIN = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+// Model fallback chain. `gemini-2.0-flash` was retired by Google (confirmed via a live
+// 404 during testing: "This model models/gemini-2.0-flash is no longer available").
+// The `-latest` aliases are Google's own auto-updating pointers to whatever the current
+// recommended Flash/Pro model is, so prefer those first for long-term resilience against
+// future renames, then fall back to explicit versions known to exist at time of writing.
+// Flash models first: they have a much more usable free-tier quota than Pro models
+// (Pro quota can be 0 on the free tier of a given project until billing is enabled).
+// gemini-2.5-pro was retired (confirmed via a live 404: "no longer available to new users,
+// use models/gemini-3.1-pro-preview"). Try multiple flash-family models before falling back
+// to Pro, since a transient 503 on one Flash model doesn't mean the others are down too.
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-pro-latest'];
 
 async function generateWithFallback(
   client: GoogleGenAI,
@@ -86,7 +96,30 @@ function cleanJsonResponse(text: string): string {
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.substring(0, cleaned.length - 3);
   }
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Gemini occasionally appends trailing commentary/whitespace after the JSON object despite
+  // instructions not to, which breaks a naive JSON.parse (SyntaxError: Unexpected non-whitespace
+  // character after JSON). Extract just the first balanced {...} object by tracking brace depth
+  // (respecting strings so braces inside quoted text don't throw off the count).
+  const start = cleaned.indexOf('{');
+  if (start === -1) return cleaned;
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return cleaned.slice(start, i + 1);
+    }
+  }
+  return cleaned;
 }
 
 function parseMockOutlineItem(item: string, genre: string, topic: string = ''): { point: string; detail: string; sample: string } {
@@ -587,7 +620,8 @@ function getMockOutline(topic: string, type: string) {
       thanbi: result.outline.thanbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic)),
       ketbi: result.outline.ketbi.map(item => parseMockOutlineItem(item, result.genre, cleanTopic))
 
-    }
+    },
+    isSimulated: true
   };
 }
 
@@ -909,6 +943,19 @@ function getMockEssay(topic: string, type: string, format: 'essay' | 'paragraph'
   return { ...essayResult, isSimulated: true };
 }
 
+// 0. Reports whether the server has its own default Gemini key configured, without ever
+// exposing the key itself. Used by the client to show an accurate "AI ready" vs "offline"
+// status even for students/teachers who never entered a personal key in Settings.
+app.get('/api/gemini/status', (req, res) => {
+  return res.json({ hasServerKey: !!process.env.GEMINI_API_KEY });
+});
+
+// Shared reference list of Textbook (Tieng Viet 5 - Ket noi tri thuc) stories, used by every
+// prompt that may need to write about one of them (outline generation, exemplary essays, chat).
+// Sourced from src/data/textbookStories.ts — see that file to add/correct a story instead of
+// editing a prompt string here.
+const TEXTBOOK_REFERENCE = buildTextbookReferenceBlock();
+
 // 1. AI Outline Generation Endpoint
 app.post('/api/gemini/generate', async (req, res) => {
   const { topic, type, model } = req.body;
@@ -925,28 +972,10 @@ app.post('/api/gemini/generate', async (req, res) => {
 
   try {
     const prompt = `Bạn là chuyên gia giáo dục tiểu học hỗ trợ dạy Tiếng Việt viết văn lớp 5 theo chương trình GDPT 2018 mới (kết nối tri thức).
-Dưới đây là một số bài đọc, câu chuyện nổi bật trong Sách giáo khoa Tiếng Việt 5 mới mà học sinh thường được yêu cầu viết văn, kể chuyện sáng tạo hoặc bày tỏ cảm nghĩ:
-- Dạng Kể chuyện sáng tạo hoặc Bày tỏ cảm xúc về câu chuyện:
-  + "Thanh âm của gió" (Câu chuyện về tình bạn giữa Thỏ con, Cừu con, Bò con ở thung lũng lộng gió)
-  + "Cánh đồng hoa" (Các bạn nhỏ cùng biến bãi rác/đất hoang xám xịt thành đồng hoa rực rỡ sắc màu)
-  + "Bến sông tuổi thơ" (Kỷ niệm êm đềm bên bến sông quê của nhân vật)
-  + "Tiếng hát của người đá" (Câu chuyện dân gian cổ tích ý nghĩa)
-  + "Khu rừng của Mát" (Bảo vệ thiên nhiên rừng xanh, chống lâm tặc)
-  + "Sự tích chú Tễu" (Nghệ thuật múa rối nước truyền thống)
-  + "Hộp quà màu thiên thanh" (Lòng trắc ẩn, tình cảm gia đình ấm áp qua hộp quà màu xanh lục)
-  + "Giỏ hoa tháng Năm" (Lòng biết ơn thầy cô giáo thông qua câu chuyện giỏ hoa tri ân)
-  + "Những con hạc giấy" (Câu chuyện cảm động về cô bé Sa-da-cô và 1000 con hạc giấy cầu ước hòa bình thế giới)
-  + "Bác sĩ A-léc-xăng-đơ Y-éc-xanh" (Lòng nhân ái, tình yêu đất nước Việt Nam của vị bác sĩ người Pháp)
-- Dạng Văn tả cảnh:
-  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
-  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
-  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
-  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
-  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
-  + "Những búp chè trên cây cổ thụ" (Tả những đồi chè shan tuyết cổ thụ Tây Bắc bồng bềnh trong mây khói)
-  + "Đường quê Đồng Tháp Mười" / "Xuồng ba lá quê tôi" (Cảnh sông nước mênh mông, thanh bình của vùng Nam Bộ)
 
-Khi phân tích đề bài "${topic}" thuộc dạng "${type}", nếu đề bài nhắc tới các câu chuyện, cảnh vật hay nhân vật này (hoặc bất kỳ bài đọc nào trong chương trình Tiếng Việt 5 mới 2018), bạn BẮT BUỘC phải liên hệ chính xác đến nội dung, tình tiết cốt truyện, nhân vật và từ khóa của tác phẩm đó để viết dàn ý chi tiết và câu văn mẫu tương ứng. Tuyệt đối tránh viết chung chung hay nhầm lẫn sang các bài đọc cũ.
+${TEXTBOOK_REFERENCE}
+
+Đề bài của học sinh: "${topic}" (thuộc dạng "${type}").
 
 Hãy trả về một đối tượng JSON có cấu trúc chính xác sau đây (không có bất kỳ text hay markdown nào khác ngoài đối tượng JSON):
 {
@@ -987,7 +1016,7 @@ Hãy trả về một đối tượng JSON có cấu trúc chính xác sau đây
     });
     const cleanedJson = cleanJsonResponse(textRes);
     const data = JSON.parse(cleanedJson);
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini Generate Outline Error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1022,21 +1051,9 @@ Yêu cầu về chất lượng bài viết:
 4. Nếu định dạng là 'paragraph' (đoạn văn), viết một đoạn văn liền mạch duy nhất không xuống dòng, tập trung thể hiện sâu sắc một khía cạnh nổi bật.
 5. Nếu có dàn ý của học sinh ('outline') kèm theo, hãy lấy cảm hứng viết bám sát theo các ý chính trong dàn ý đó nhưng nâng tầm ngôn từ lên loại giỏi để học sinh noi theo.
 
-Tài liệu tham khảo bắt buộc về sách giáo khoa Tiếng Việt 5 mới (Bộ Kết nối tri thức - KNTT):
-- Dạng Kể chuyện sáng tạo:
-  + "Thanh âm của gió" (Nhân vật chăn trâu gồm: Bống, anh trai của Bống, Điệp, Văn, Thành; chơi trò bịt tai nghe tiếng gió rì rào qua khe đá, xào xạc qua kẽ tre)
-  + "Cánh đồng hoa" (Nhân vật gồm: Ja Ka, Mư Hoa, Ja Prok, Mư Nhơ cùng dọn rác và trồng hoa hướng dương, cúc bách nhật trên đồng cỏ đầu buôn làng)
-  + "Hộp quà màu thiên thanh" (Nhân vật gồm: Tân, Quang, Huệ viết thư tri ân chứa trong hộp màu xanh thiên thanh tặng cô giáo chủ nhiệm)
-  + "Giỏ hoa tháng Năm" (Nhân vật kể chuyện tri ân thầy cô giáo)
-  + "Những con hạc giấy" (Cô bé Sa-da-cô và ước mong hòa bình qua 1000 con hạc giấy)
-- Dạng Văn tả cảnh:
-  + "Trước cổng trời" (Cảnh núi cao hùng vĩ hoang sơ của vùng Tây Bắc)
-  + "Kì diệu rừng xanh" (Cảnh sắc khu rừng khộp đầy nấm rực rỡ sắc màu và loài mang vàng ngơ ngác)
-  + "Hang Sơn Đoòng – những điều kì thú" (Vẻ kỳ vĩ, thạch nhũ nghìn năm và hố sụt có rừng dưới lòng hang lớn nhất thế giới)
-  + "Những hòn đảo trên vịnh Hạ Long" (Cảnh biển đảo đá vôi Hạ Long kỳ vĩ nhấp nhô như tranh vẽ)
-  + "Hương cốm mùa thu" (Tả cốm xanh ngọc mát lành ấm áp của mùa thu Hà Nội)
+${TEXTBOOK_REFERENCE}
 
-Khi viết bài mẫu cho đề tài "${topic}", nếu đề tài liên quan đến các tác phẩm trong danh sách tham chiếu trên, bạn BẮT BUỘC phải sử dụng chính xác các tên nhân vật, địa danh và tình tiết cốt truyện tương ứng để bài mẫu chân thực và hoàn toàn thống nhất với sách giáo khoa lớp 5.
+Đề tài bài văn: "${topic}".
 
 Chủ đề: "${topic}"
 Dạng bài tương ứng: ${type}
@@ -1067,7 +1084,7 @@ BẮT BUỘC TRẢ VỀ kết quả duy nhất dưới dạng một đối tư�
     });
     const cleanedJson = cleanJsonResponse(textRes);
     const data = JSON.parse(cleanedJson);
-    return res.json(data);
+    return res.json({ ...data, isSimulated: false });
   } catch (err: any) {
     console.error('Gemini Generate Essay Error:', err);
     const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
@@ -1075,292 +1092,6 @@ BẮT BUỘC TRẢ VỀ kết quả duy nhất dưới dạng một đối tư�
       return res.status(500).json({ error: `Gemini API Error: ${err.message || err}` });
     }
     return res.status(200).json(getDynamicMockEssay(topic, type, format || 'essay'));
-  }
-});
-
-// 2. AI Grading Rubric Evaluation Endpoint
-app.post('/api/gemini/grade', async (req, res) => {
-  const { topic, type, outline, model } = req.body;
-  if (!topic || !outline) {
-    return res.status(400).json({ error: 'Chủ đề đề bài và Dàn ý không được để trống' });
-  }
-
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    // Return high-quality mock evaluation
-    const scoreVal = outline.length > 100 ? 84 : 68;
-    return res.json({
-      score: scoreVal,
-      criteriaScores: {
-        understand: Math.round(scoreVal * 0.2),
-        structure: Math.round(scoreVal * 0.2),
-        development: Math.round(scoreVal * 0.25),
-        creativity: Math.round(scoreVal * 0.2),
-        logic: Math.round(scoreVal * 0.15)
-      },
-      feedback: {
-        general: scoreVal >= 80 
-          ? 'Ý tưởng bài viết của em khá phong phú, bộc lộ được xúc cảm sâu sắc và chân thực của lứa tuổi học sinh lớp 5.' 
-          : 'Dàn ý của em đã có đủ 3 phần cơ bản nhưng cần phát triển thêm những chi tiết miêu tả và cảm thụ sinh động hơn.',
-        strengths: [
-          'Đã xác định đúng kiểu bài học sinh lớp 5.',
-          'Bố cục ba phần rành mạch vững chãi.',
-          'Bộc lộ cảm xúc tự nhiên, mộc mạc.'
-        ],
-        improvements: [
-          'Cần bổ sung thêm các hình ảnh chi tiết giàu liên tưởng.',
-          'Hãy đa dạng hóa các tính từ màu sắc hoặc âm thanh đặc tả để bài viết sinh động hơn.'
-        ],
-        nextSteps: 'Hãy thử viết thêm 2-3 ý cụ thể làm rõ chi tiết "âm thanh xôn xao" và nộp lại ở phiên bản sửa đổi (Lần 2) để thấy sự tiến bộ nhé!'
-      },
-      checklist: [
-        { name: 'Xác định rõ ràng bối cảnh', status: true },
-        { name: 'Phát triển ý chi tiết', status: outline.length > 120 },
-        { name: 'Sử dụng từ ngữ biểu cảm', status: outline.length > 80 },
-        { name: 'Có bài học trải nghiệm sâu sắc', status: outline.includes('bài học') || outline.includes('em hứa') || outline.length > 100 }
-      ]
-    });
-  }
-
-  try {
-    const prompt = `Bạn là huấn luyện viên viết văn Tiếng Việt lớp 5 thông thái.
-Hãy chấm điểm dàn ý của học sinh theo thang điểm 100 dựa trên rubric này:
-1. Hiểu đề và xác định đúng yêu cầu (tối đa 20 điểm)
-2. Cấu trúc, bố cục dàn ý 3 phần (tối đa 20 điểm)
-3. Phát triển ý chính, ý phụ, mức độ chi tiết (tối đa 25 điểm)
-4. Sự xuất hiện của cảm xúc / quan điểm / sáng tạo (tối đa 20 điểm)
-5. Tính logic và khả năng triển khai thành bài viết (tối đa 15 điểm)
-
-Đề bài: "${topic}"
-Dạng bài tương ứng: ${type}
-Nội dung dàn ý học sinh nhập:
-"${outline}"
-
-Hãy đánh giá cẩn thận và trả về cấu trúc JSON duy nhất sau (không chứa các khối markdown hay chữ khác ngoài thuộc tính JSON):
-{
-  "score": 85, // Tổng điểm thực tế (chỉ số integer từ 0 đến 100)
-  "criteriaScores": {
-    "understand": 18, // điểm thực tế cột 1 (tối đa 20)
-    "structure": 17, // điểm thực tế cột 2 (tối đa 20)
-    "development": 20, // điểm thực tế cột 3 (tối đa 25)
-    "creativity": 16, // điểm thực tế cột 4 (tối đa 20)
-    "logic": 14 // điểm thực tế cột 5 (tối đa 15)
-  },
-  "feedback": {
-    "general": "Lời nhận xét tổng quan khích lệ tinh thần, súc tích dành cho học sinh lớp 5.",
-    "strengths": ["Điểm mạnh 1 rõ nét", "Điểm mạnh 2 rõ nét"],
-    "improvements": ["Nội dung cần bổ sung 1", "Nội dung cần bổ sung 2"],
-    "nextSteps": "Gợi ý nhiệm vụ nâng cấp cụ thể để sửa đổi cho bài viết tốt hơn"
-  },
-  "checklist": [
-    {"name": "Tiêu chí checklist 1 liên đới riêng biệt dạng bài (ví dụ: Tả bao quát cảnh)", "status": true},
-    {"name": "Tiêu chí checklist 2 (ví dụ: Sử dụng từ láy, biện pháp so sánh)", "status": false},
-    {"name": "Tiêu chí checklist 3 (ví dụ: Thể hiện cảm xúc chân thực)", "status": true}
-  ]
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.6,
-    });
-    const data = JSON.parse(cleanJsonResponse(textRes));
-    return res.json(data);
-  } catch (err: any) {
-    console.error('Gemini grading error:', err);
-    const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
-    if (hasApiKey) {
-      return res.status(500).json({ error: `Gemini API Error: ${err.message || err}` });
-    }
-    return res.json({
-      score: 75,
-      criteriaScores: { understand: 16, structure: 16, development: 18, creativity: 14, logic: 11 },
-      feedback: {
-        general: 'Bài của em có ý hay nhưng cần bổ sung các cụm từ đắt giá.',
-        strengths: ['Đúng dạng bài', 'Bố cục rõ ràng'],
-        improvements: ['Bổ sung thêm từ láy, hình ảnh so sánh', 'Nêu rõ cảm nghĩ ở kết bài'],
-        nextSteps: 'Hãy bổ sung từ láy và hình ảnh miêu tả để bài viết cuốn hút hơn.'
-      },
-      checklist: [{ name: 'Có mở bài', status: true }, { name: 'Thân bài chi tiết', status: false }]
-    });
-  }
-});
-
-// 3. AI Growth Tracker Comparison Endpoint (Before vs After)
-app.post('/api/gemini/compare', async (req, res) => {
-  const { topic, type, outlineBefore, outlineAfter, gradeBefore, model } = req.body;
-  if (!topic || !outlineBefore || !outlineAfter) {
-    return res.status(400).json({ error: 'Thiếu dữ liệu để so sánh dàn ý trước sau' });
-  }
-
-  const scoreBefore = gradeBefore?.score || 65;
-  const skillsBefore = gradeBefore?.criteriaScores || {
-    understand: 14,
-    structure: 14,
-    development: 16,
-    creativity: 12,
-    logic: 9
-  };
-
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    // Generate high-quality growth comparison mock
-    const scoreAfter = Math.min(scoreBefore + 18, 98);
-    const scoreDiff = scoreAfter - scoreBefore;
-
-    const compFeedback: Record<string, { celebration: string; reminders: string; growthWords: string }> = {
-      'ta-canh': {
-        celebration: `Tuyệt vời quá! Em đã tăng tận ${scoreDiff} điểm! Thân bài của em từ chỗ chỉ giới thiệu sơ sài giờ đã sống động hơn hẳn nhờ bổ sung các hình ảnh tả cảnh sắc nét, âm thanh rộn ràng và màu sắc tự nhiên.`,
-        reminders: 'Em hãy lưu ý sắp xếp thứ tự miêu tả theo một trình tự hợp lý (không gian hoặc thời gian) để chuyển ý mượt mà hơn nhé.',
-        growthWords: 'Em đã trưởng thành từ việc quan sát cảnh vật chung chung thành một người quan sát nhạy bén, biết tả chi tiết sinh động.'
-      },
-      'ke-chuyen-sang-tao': {
-        celebration: `Quá xuất sắc! Dàn ý của em đã tăng tận ${scoreDiff} điểm! Câu chuyện sáng tạo của em trở nên lôi cuốn và kịch tính hơn rất nhiều nhờ sự xuất hiện của các tình huống bất ngờ và lời thoại sinh động.`,
-        reminders: 'Đừng quên nhấn mạnh hành động giải quyết thử thách của nhân vật chính ở phần cao trào để câu chuyện thêm phần thuyết phục nhé.',
-        growthWords: 'Em có trí tưởng tượng rất phong phú và biết cách sắp xếp diễn biến câu chuyện hợp lý để tạo sự tò mò cho người đọc.'
-      },
-      'cam-xuc-nhan-vat': {
-        celebration: `Tuyệt vời quá! Em đã tăng tận ${scoreDiff} điểm! Dàn ý đã sâu sắc hơn rất nhiều nhờ bổ sung các dẫn chứng cụ thể về ngoại hình, lời nói của nhân vật và lý giải rõ tình cảm mến mộ của mình.`,
-        reminders: 'Hãy liên hệ thực tế một cách tự nhiên hơn, rút ra bài học ứng xử gần gũi với cuộc sống của chính em từ nhân vật nhé.',
-        growthWords: 'Em đã thể hiện khả năng cảm nhận văn học tinh tế, biết đồng cảm và trân trọng những phẩm chất tốt đẹp của nhân vật.'
-      },
-      'cam-xuc-su-viec': {
-        celebration: `Thật đáng khen! Em đã tăng tận ${scoreDiff} điểm! Dàn ý của em đã truyền tải được trọn vẹn cảm xúc xúc động, tự hào hay biết ơn về sự việc thông qua các khoảnh khắc ấn tượng đặc trưng.`,
-        reminders: 'Lưu ý cân đối giữa phần tường thuật sự việc và biểu lộ cảm nghĩ, tránh sa vào kể lể chi tiết quá nhiều em nhé.',
-        growthWords: 'Cách em bày tỏ tình cảm chân thành qua từng chi tiết nhỏ cho thấy em có một trái tim ấm áp và khả năng diễn đạt cảm xúc rất tốt.'
-      },
-      'neu-y-kien': {
-        celebration: `Chúc mừng em! Điểm dàn ý của em đã tăng tận ${scoreDiff} điểm! Lập luận lần này vô cùng sắc bén và thuyết phục nhờ em đã nêu rõ quan điểm cá nhân, có ít nhất 2 lý lẽ kèm dẫn chứng thực tế rõ ràng.`,
-        reminders: 'Cần chú ý bổ sung ý kiến phản biện ngắn gọn để bài viết thêm phần toàn diện và bác bỏ các quan điểm chưa chính xác nhé.',
-        growthWords: 'Tư duy phản biện và khả năng lập luận của em rất tốt. Em đã biết dùng lý lẽ và dẫn chứng thực tế để bảo vệ quan điểm của mình một cách khoa học.'
-      },
-      'cam-xuc-cau-chuyen': {
-        celebration: `Tuyệt vời quá! Em đã tăng tận ${scoreDiff} điểm! Dàn ý của em đã sâu sắc hơn rất nhiều nhờ bổ sung cảm nhận chân thành về các sự việc xúc động trong truyện và rút ra bài học sâu sắc.`,
-        reminders: 'Em nên chú ý làm nổi bật những khoảnh khắc làm thay đổi suy nghĩ của nhân vật chính hơn nữa nhé.',
-        growthWords: 'Em đã biết kết hợp hài hòa giữa việc tóm tắt câu chuyện và bày tỏ cảm xúc, tạo nên một bài cảm nhận giàu tính nhân văn.'
-      },
-      'cam-xuc-bai-tho': {
-        celebration: `Rất đáng khen! Điểm dàn ý của em đã tăng tận ${scoreDiff} điểm! Em đã cảm nhận sâu sắc cái hay của hình ảnh thơ độc đáo, nhạc điệu réo rắt và ngôn từ nghệ thuật đặc sắc.`,
-        reminders: 'Nhớ trích dẫn thơ hoặc chỉ rõ những câu thơ đắt giá khi triển khai thành bài viết để tạo điểm nhấn nhé.',
-        growthWords: 'Em đã có sự tiến bộ vượt bậc trong việc cảm thụ nghệ thuật ngôn từ, biết trân trọng những vần thơ tình cảm ngọt ngào.'
-      },
-      'gioi-thieu-nhan-vat-sach': {
-        celebration: `Tuyệt vời quá! Em đã tăng tận ${scoreDiff} điểm! Dàn ý giới thiệu nhân vật trong sách đã chi tiết hơn hẳn nhờ bổ sung các dẫn chứng sinh động về hành động, lời nói và tính cách trong cuốn sách.`,
-        reminders: 'Lưu ý tránh sa đà kể lại toàn bộ câu chuyện mà hãy tập trung giới thiệu và nhận xét về nhân vật nhé.',
-        growthWords: 'Em đã nắm rõ phương pháp giới thiệu nhân vật văn học, biết cách phân tích phẩm chất tốt đẹp để làm tấm gương noi theo.'
-      },
-      'gioi-thieu-nhan-vat-hoat-hinh': {
-        celebration: `Chúc mừng bạn nhỏ! Dàn ý của em đã tăng tận ${scoreDiff} điểm! Nhân vật hoạt hình hiện lên vô cùng ngộ nghĩnh, đáng yêu qua việc miêu tả nét vẽ, sắc màu và cả những bảo bối kỳ diệu.`,
-        reminders: 'Em hãy chú ý nêu rõ hơn bài học ý nghĩa hay niềm vui mà nhân vật mang lại cho trẻ thơ nhé.',
-        growthWords: 'Cách em giới thiệu nhân vật hoạt hình rất sinh động, mang đậm chất trẻ thơ và giữ được sự cuốn hút đặc trưng của phim ảnh.'
-      },
-      'ta-nguoi': {
-        celebration: `Quá xuất sắc! Dàn ý của em đã tăng tận ${scoreDiff} điểm! Em đã kết hợp rất hài hòa giữa miêu tả ngoại hình tiêu biểu và các hoạt động, cử chỉ bộc lộ tính cách ấm áp của người được tả.`,
-        reminders: 'Nhớ đan xen những kỷ niệm đáng nhớ cùng người đó để bài viết giàu cảm xúc và tự nhiên hơn nhé.',
-        growthWords: 'Em đã chuyển từ tả người một cách máy móc sang tả người giàu tình cảm, biết dùng chi tiết ngoại hình để lột tả vẻ đẹp tâm hồn.'
-      },
-      'lap-chuong-trinh-hoat-dong': {
-        celebration: `Chúc mừng em! Điểm dàn ý lập chương trình đã tăng tận ${scoreDiff} điểm! Bố cục 3 phần rõ ràng, phân công nhiệm vụ cụ thể cho từng tổ và các bước tiến hành sắp xếp vô cùng khoa học.`,
-        reminders: 'Hãy giữ ngôn từ ngắn gọn, rõ ý, tránh viết lan man như văn kể chuyện thông thường nhé.',
-        growthWords: 'Tư duy tổ chức và lập kế hoạch của em rất tốt. Bản chương trình hoạt động của em có tính khả thi cao và phân công rất hợp lý.'
-      }
-    };
-
-    const currentFeedback = compFeedback[type] || compFeedback['ta-canh'];
-
-    return res.json({
-      scoreBefore,
-      scoreAfter,
-      scoreDiff,
-      skillsBefore,
-      skillsAfter: {
-        understand: Math.min(skillsBefore.understand + 2, 20),
-        structure: Math.min(skillsBefore.structure + 3, 20),
-        development: Math.min(skillsBefore.development + 5, 25),
-        creativity: Math.min(skillsBefore.creativity + 4, 20),
-        logic: Math.min(skillsBefore.logic + 4, 15)
-      },
-      feedback: currentFeedback
-    });
-  }
-
-  try {
-    const prompt = `Bạn là huấn luyện viên viết văn Tiếng Việt lớp 5.
-Học sinh đã nhận phản hồi từ dàn ý ban đầu (Dàn ý 1), sau đó tự tay điều chỉnh cải tiến thành Dàn ý cải thiện (Dàn ý 2).
-Hãy chấm điểm lại Dàn ý 2 và so sánh sự tiến bộ cụ thể giữa hai phiên bản để tôn vinh sự học hỏi và chỉ ra kỹ năng em đã làm tốt lên.
-
-Chủ đề đề bài: "${topic}"
-Dạng bài tương ứng: ${type}
-
-Phiên bản Dàn ý 1 (Trước):
-"${outlineBefore}"
-Điểm của Dàn ý 1 dã chấm trước đó: ${scoreBefore}/100
-
-Phiên bản Dàn ý 2 (Sau cải thiện):
-"${outlineAfter}"
-
-Bây giờ bạn hãy đánh giá Dàn ý 2 và lập báo cáo so sánh trước - sau.
-Lưu ý: Dàn ý 2 sẽ cải thiện dựa trên các ý gợi ý nên điểm thường cao hơn Dàn ý 1, phản ánh sự tự điều chỉnh và tiếp thu phản hồi của học sinh.
-
-Hãy gửi kết quả cấu trúc JSON duy nhất sau (không có các chữ nằm ngoài JSON):
-{
-  "scoreBefore": ${scoreBefore}, // Giữ nguyên điểm cũ
-  "scoreAfter": 86, // Chấm điểm Dàn ý 2 (thông thường cao hơn Dàn ý 1, tối đa 100)
-  "scoreDiff": 21, // Hiệu số tăng điểm thực tế (scoreAfter - scoreBefore)
-  "skillsBefore": {
-    "understand": ${skillsBefore.understand},
-    "structure": ${skillsBefore.structure},
-    "development": ${skillsBefore.development},
-    "creativity": ${skillsBefore.creativity},
-    "logic": ${skillsBefore.logic}
-  },
-  "skillsAfter": {
-    "understand": 18, // Chấm điểm từng cột cho Dàn ý 2 (max 20)
-    "structure": 19, // (max 20)
-    "development": 22, // (max 25)
-    "creativity": 18, // (max 20)
-    "logic": 13 // (max 15)
-  },
-  "feedback": {
-    "celebration": "Lời chúc mừng đầy hào hứng, nêu đích xác từ ngữ/chi tiết em đã thêm vào Dàn ý 2 tạo sự cải tiến bất ngờ.",
-    "reminders": "Một lưu ý nhỏ để em chú trọng hơn cho bài văn thật sau này.",
-    "growthWords": "Chân dung người viết: Nhận xét tóm gọn em đã chuyển mình thế nào (Ví dụ: Từ việc mô tả chung chung sang việc sử dụng xúc cảm và hình tượng tả chi tiết sinh động)."
-  }
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.5,
-    });
-    const data = JSON.parse(cleanJsonResponse(textRes));
-    return res.json(data);
-  } catch (err: any) {
-    console.error('Gemini compare error:', err);
-    const hasApiKey = !!(clientApiKey || process.env.GEMINI_API_KEY);
-    if (hasApiKey) {
-      return res.status(500).json({ error: `Gemini API Error: ${err.message || err}` });
-    }
-    // Graceful fallback
-    const mockAfter = Math.min(scoreBefore + 15, 96);
-    return res.json({
-      scoreBefore,
-      scoreAfter: mockAfter,
-      scoreDiff: mockAfter - scoreBefore,
-      skillsBefore,
-      skillsAfter: {
-        understand: Math.min(skillsBefore.understand + 1, 20),
-        structure: Math.min(skillsBefore.structure + 2, 20),
-        development: Math.min(skillsBefore.development + 4, 25),
-        creativity: Math.min(skillsBefore.creativity + 3, 20),
-        logic: Math.min(skillsBefore.logic + 2, 15)
-      },
-      feedback: {
-        celebration: 'Chúc mừng sự nỗ lực vượt khó tuyệt vời của em! Dàn ý lần 2 đã bổ sung những câu miêu tả sống động, nhiều từ láy và âm thanh vang vui.',
-        reminders: 'Em cần liên kết hai đoạn tả hoạt động tự nhiên hơn nữa để chuyển cảnh thật mượt nhé.',
-        growthWords: 'Em đã học được thói quen lắng nghe phản hồi và biến ý tưởng còn sơ sài thành bức tranh văn học giàu sắc thái.'
-      }
-    });
   }
 });
 
@@ -1882,7 +1613,7 @@ app.post('/api/gemini/chat', async (req, res) => {
 
   const client = getGeminiClient(clientApiKey);
   if (!client) {
-    return res.json(getGenreSpecificMockChat(messages, topic, type));
+    return res.json({ ...getGenreSpecificMockChat(messages, topic, type), isSimulated: true });
   }
 
   try {
@@ -1894,6 +1625,8 @@ Quy tắc:
 - Dẫn dắt học sinh xây dựng dàn ý từng bước (Mở bài → Thân bài → Kết bài)
 - Khuyến khích dùng từ ngữ miêu tả, cảm xúc
 - Sau 2-3 câu trả lời, tổng hợp thành một phần dàn ý
+
+${TEXTBOOK_REFERENCE}
 
 Đề bài: "${topic}"
 Dạng bài: ${type}
@@ -1911,120 +1644,10 @@ Hãy trả lời bằng JSON:
       responseMimeType: 'application/json',
       temperature: 0.8,
     });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
+    return res.json({ ...JSON.parse(cleanJsonResponse(textRes)), isSimulated: false });
   } catch (err: any) {
     console.error('Chat error:', err);
-    return res.json(getGenreSpecificMockChat(messages, topic, type));
-  }
-});
-
-// 5. Sentence Transformer Endpoint (Biến hóa câu văn)
-app.post('/api/gemini/transform', async (req, res) => {
-  const { sentence, type, model } = req.body;
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  
-  if (!sentence) {
-    return res.status(400).json({ error: 'Câu văn không được để trống' });
-  }
-
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    return res.json({
-      original: sentence,
-      variations: [
-        { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
-        { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
-        { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ]
-    });
-  }
-
-  try {
-    const prompt = `Bạn là huấn luyện viên viết văn lớp 5. Học sinh viết một câu đơn giản, hãy biến hóa thành 3 phiên bản hay hơn.
-
-Câu gốc: "${sentence}"
-Dạng bài: ${type || 'ta-canh'}
-
-Trả về JSON:
-{
-  "original": "${sentence}",
-  "variations": [
-    { "style": "Nhân hóa", "text": "Câu đã biến hóa bằng nhân hóa", "explanation": "Giải thích ngắn biện pháp tu từ" },
-    { "style": "So sánh", "text": "Câu đã biến hóa bằng so sánh", "explanation": "Giải thích" },
-    { "style": "Từ láy & Giác quan", "text": "Câu đã biến hóa bằng từ láy", "explanation": "Giải thích" }
-  ]
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.85,
-    });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
-  } catch (err: any) {
-    console.error('Transform error:', err);
-    // Graceful fallback to mock variations
-    return res.json({
-      original: sentence,
-      variations: [
-        { style: 'Nhân hóa', text: sentence.replace(/rất/, 'như một người bạn hiền, luôn').replace(/\./, ', vươn mình đón nắng sớm mai.'), explanation: 'Biến sự vật thành con người có cảm xúc, hành động sống động.' },
-        { style: 'So sánh', text: sentence.replace(/rất/, '').replace(/\./, '') + ', tựa như một bức tranh thiên nhiên tuyệt đẹp.', explanation: 'Dùng hình ảnh quen thuộc để người đọc hình dung rõ hơn.' },
-        { style: 'Từ láy & Giác quan', text: sentence.replace(/rất/, 'lừng lững, xanh mướt mát,').replace(/\./, ', tỏa bóng mát rượi cho sân trường.'), explanation: 'Từ láy gợi hình ảnh, âm thanh, xúc giác sinh động hơn.' }
-      ]
-    });
-  }
-});
-
-// 6. Detective Game Endpoint (Thám tử bắt lỗi)
-app.post('/api/gemini/detective', async (req, res) => {
-  const { topic, type, errorType, model } = req.body;
-  const clientApiKey = req.headers['x-api-key'] as string | undefined;
-  
-  const client = getGeminiClient(clientApiKey);
-  if (!client) {
-    return res.json({
-      passage: 'Sáng nay em đi học. Trường em rất đẹp. Cây bàng rất to. Hôm qua em ăn phở. Bạn bè rất vui. Trường em có sân rộng. Em thích đi học. Cô giáo dạy toán rất hay. Em rất thích trường em.',
-      errors: [
-        { location: 'Câu 4', type: 'Lạc đề', suggestion: 'Câu "Hôm qua em ăn phở" không liên quan đến tả trường học. Nên thay bằng chi tiết về cảnh trường.' },
-        { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
-        { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
-      ],
-      difficulty: 'easy'
-    });
-  }
-
-  try {
-    const prompt = `Bạn là giáo viên Tiếng Việt lớp 5. Hãy viết một đoạn văn ngắn (5-8 câu) có LỖI CHỦ ĐÍCH để học sinh luyện tập phát hiện lỗi.
-
-Đề bài: "${topic || 'Tả cảnh trường em'}"
-Dạng bài: ${type || 'ta-canh'}
-Loại lỗi cần cài: ${errorType || 'thiếu cảm xúc, lạc đề nhẹ'}
-
-Trả về JSON:
-{
-  "passage": "Đoạn văn có lỗi chủ đích (5-8 câu)",
-  "errors": [
-    { "location": "Vị trí lỗi (VD: Câu 3)", "type": "Loại lỗi", "suggestion": "Gợi ý sửa" }
-  ],
-  "difficulty": "easy|medium|hard"
-}`;
-
-    const textRes = await generateWithFallback(client, model, prompt, {
-      responseMimeType: 'application/json',
-      temperature: 0.9,
-    });
-    return res.json(JSON.parse(cleanJsonResponse(textRes)));
-  } catch (err: any) {
-    console.error('Detective error:', err);
-    // Graceful fallback to mock detective passage
-    return res.json({
-      passage: 'Sáng nay em đi học. Trường em rất đẹp. Cây bàng rất to. Hôm qua em ăn phở. Bạn bè rất vui. Trường em có sân rộng. Em thích đi học. Cô giáo dạy toán rất hay. Em rất thích trường em.',
-      errors: [
-        { location: 'Câu 4', type: 'Lạc đề', suggestion: 'Câu "Hôm qua em ăn phở" không liên quan đến tả trường học. Nên thay bằng chi tiết về cảnh trường.' },
-        { location: 'Toàn bài', type: 'Thiếu cảm xúc', suggestion: 'Bài viết liệt kê như danh sách, thiếu từ ngữ miêu tả cảm xúc sinh động.' },
-        { location: 'Câu 1-3', type: 'Câu ngắn đơn điệu', suggestion: 'Các câu quá ngắn và đơn giản. Cần dùng từ láy, tính từ để tả chi tiết hơn.' }
-      ],
-      difficulty: 'easy'
-    });
+    return res.json({ ...getGenreSpecificMockChat(messages, topic, type), isSimulated: true });
   }
 });
 
@@ -2155,10 +1778,21 @@ app.post('/api/admin/track-use', async (req, res) => {
   }
 });
 
-// 8. Get telemetry stats for admin
+// 8. Verify an admin key without exposing any data (used by the login modal)
+app.post('/api/admin/verify', (req, res) => {
+  const { key } = req.body || {};
+  const expected = process.env.ADMIN_KEY;
+  if (!expected) {
+    return res.status(503).json({ valid: false, error: 'ADMIN_KEY chưa được cấu hình trên server' });
+  }
+  return res.json({ valid: !!key && key === expected });
+});
+
+// 9. Get telemetry stats for admin
 app.get('/api/admin/stats', async (req, res) => {
   const adminKey = req.headers['x-admin-key'] as string | undefined;
-  if (adminKey !== 'admin9999') {
+  const expected = process.env.ADMIN_KEY;
+  if (!expected || adminKey !== expected) {
     return res.status(401).json({ error: 'Mã xác thực Admin không hợp lệ' });
   }
 
@@ -2336,6 +1970,48 @@ app.get('/api/sync/class-info', async (req, res) => {
     return res.json({ success: true, classInfo });
   } catch (err: any) {
     console.error('Error in GET /api/sync/class-info:', err);
+    return res.status(500).json({ error: err.message || 'Lỗi server' });
+  }
+});
+
+// 1.5. Get PIN-free public roster (name/avatar only) — safe to call before any authentication,
+// e.g. from the student picker screen when a visitor types in a class code.
+app.get('/api/sync/roster', async (req, res) => {
+  const teacherId = req.query.teacherId as string;
+  if (!teacherId) {
+    return res.status(450).json({ error: 'Mã giáo viên (teacherId) là bắt buộc' });
+  }
+  try {
+    const classInfo = await getClassInfo(teacherId);
+    if (!classInfo) {
+      return res.json({ success: true, classInfo: null });
+    }
+    return res.json({
+      success: true,
+      classInfo: {
+        className: classInfo.className,
+        schoolName: classInfo.schoolName,
+        students: (classInfo.students || []).map((s: any) => ({ id: s.id, name: s.name, avatar: s.avatar }))
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in GET /api/sync/roster:', err);
+    return res.status(500).json({ error: err.message || 'Lỗi server' });
+  }
+});
+
+// 1.6. Verify a student's PIN server-side — the real PIN is never sent back to the client.
+app.post('/api/sync/verify-pin', async (req, res) => {
+  const { teacherId, studentId, pin } = req.body || {};
+  if (!teacherId || !studentId || !pin) {
+    return res.status(400).json({ error: 'Thiếu thông tin xác thực (teacherId, studentId, pin)' });
+  }
+  try {
+    const classInfo = await getClassInfo(teacherId);
+    const student = (classInfo?.students || []).find((s: any) => s.id === studentId);
+    return res.json({ valid: !!student && student.pin === pin });
+  } catch (err: any) {
+    console.error('Error in POST /api/sync/verify-pin:', err);
     return res.status(500).json({ error: err.message || 'Lỗi server' });
   }
 });

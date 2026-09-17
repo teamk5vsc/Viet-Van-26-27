@@ -1,33 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment } from './types';
+import { OutlineSubmission, StudentProfile, ClassInfo, StudentEntry, StudentGroup, GroupAssignment, RubricItem } from './types';
 import SyllabusTab from './components/SyllabusTab';
 import AIOutlineHelper from './components/AIOutlineHelper';
-import SequenceGame from './components/SequenceGame';
 import PortfolioTab from './components/PortfolioTab';
 import TeacherDashboard from './components/TeacherDashboard';
-import DetectiveGame from './components/DetectiveGame';
+import VietMasterHero from './components/VietMasterHero';
 import { 
-  BookOpen, Sparkles, Gamepad2, Award, Users, Compass, 
-  HelpCircle, Lightbulb, CheckSquare, Heart, Settings,
-  Key, ExternalLink, X, Cpu, Zap, Star, Shield, Search, UserPlus, Lock, ArrowLeft, ClipboardList
+  BookOpen, Sparkles, Award, Users, Compass,
+  HelpCircle, Lightbulb, Heart, Settings,
+  Key, ExternalLink, X, Cpu, Zap, Star, Shield, UserPlus, Lock, ArrowLeft, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- AI Model Configuration ---
+// Model ids sent to our own /api/gemini/* backend, which tries each one against Google
+// and automatically falls through to the next on failure (see MODEL_FALLBACK_CHAIN in
+// server.ts). The "-latest" ids are Google's own auto-updating aliases, so they keep
+// working even after Google renames/retires specific dated model versions.
 const AI_MODELS = [
-  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', desc: 'Nhanh & tiết kiệm, phù hợp sử dụng hàng ngày', emoji: '⚡', isDefault: true },
-  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', desc: 'Chất lượng cao, phân tích sâu hơn', emoji: '🧠', isDefault: false },
+  { id: 'gemini-flash-latest', name: 'Gemini Flash', desc: 'Nhanh & tiết kiệm, phù hợp sử dụng hàng ngày', emoji: '⚡', isDefault: true },
+  { id: 'gemini-pro-latest', name: 'Gemini Pro', desc: 'Chất lượng cao, phân tích sâu hơn', emoji: '🧠', isDefault: false },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'Ổn định, dự phòng khi model mới quá tải', emoji: '🛡️', isDefault: false },
 ];
 
 // Default empty student profile builder
 function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmission[] = [], className: string = ''): StudentProfile {
-  const scores = submissions
-    .map(s => s.gradeAfter?.score || s.gradeBefore?.score || 0)
-    .filter(s => s > 0);
+  // Score of record for a submission, as a percentage — the teacher's manual rating
+  // is the source of truth now that AI auto-grading has been removed (gradeAfter/
+  // gradeBefore only matter for older submissions saved before that change).
+  // Percentage is necessary because the teacher can grade different submissions out
+  // of different point totals (an 8-point rubric one week, 100 the next), so raw
+  // points aren't comparable across submissions.
+  const percentOf = (s: OutlineSubmission): number | null => {
+    // maxScore defaults to 100 when missing, for a teacherReview saved before this
+    // field existed (and legacy AI grades, which were always out of 100).
+    if (s.teacherReview) return (s.teacherReview.score / (s.teacherReview.maxScore || 100)) * 100;
+    const legacy = s.gradeAfter?.score ?? s.gradeBefore?.score;
+    return legacy != null ? legacy : null;
+  };
+  const scores = submissions.map(percentOf).filter((s): s is number => s !== null);
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const level = avgScore >= 85 ? 'Master Outliner 🎖️' : avgScore >= 70 ? 'Nhà văn tập sự ✍️' : avgScore >= 50 ? 'Người học chăm chỉ 📖' : 'Bạn mới bắt đầu 🌱';
-  
+
+  // The teacher's rubric criteria are free-form per submission (she names them to
+  // fit whatever essay type it is), so they can't be averaged into the fixed five
+  // skill buckets below by name. The skill map is instead a weighted guess derived
+  // from the overall percentage score, same as before rubric grading existed.
+  const skillFromScore = (weight: number) => (avgScore > 0 ? Math.min(Math.round(avgScore * weight), 100) : 0);
+
   return {
     id: student.id,
     name: student.name,
@@ -36,17 +56,17 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
     level,
     avgScore,
     outlineCount: submissions.length,
-    progressScore: scores.length >= 2 ? scores[scores.length - 1] - scores[0] : 0,
+    progressScore: scores.length >= 2 ? Math.round(scores[scores.length - 1] - scores[0]) : 0,
     timeline: submissions.slice(-6).map((s, i) => ({
       month: `Bài ${i + 1}`,
-      score: s.gradeAfter?.score || s.gradeBefore?.score || 0
+      score: Math.round(percentOf(s) || 0)
     })),
     skillMap: {
-      understand: avgScore > 0 ? Math.min(Math.round(avgScore * 0.95), 100) : 0,
-      structure: avgScore > 0 ? Math.min(Math.round(avgScore * 0.9), 100) : 0,
-      development: avgScore > 0 ? Math.min(Math.round(avgScore * 0.85), 100) : 0,
-      creativity: avgScore > 0 ? Math.min(Math.round(avgScore * 0.88), 100) : 0,
-      logic: avgScore > 0 ? Math.min(Math.round(avgScore * 0.82), 100) : 0,
+      understand: skillFromScore(0.95),
+      structure: skillFromScore(0.9),
+      development: skillFromScore(0.85),
+      creativity: skillFromScore(0.88),
+      logic: skillFromScore(0.82),
     },
     styleAttributes: {
       tag: submissions.length > 0 ? 'Đang phát triển phong cách' : 'Chưa có dữ liệu',
@@ -66,7 +86,7 @@ function buildStudentProfile(student: StudentEntry, submissions: OutlineSubmissi
 const AVATAR_OPTIONS = ['🎒', '⚽', '🎨', '🌸', '🤖', '🦋', '🎵', '🌟', '🐶', '🐱', '🦁', '🐻', '🎯', '📚', '✈️', '🚀'];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'syllabus' | 'helper' | 'game' | 'detective' | 'portfolio' | 'teacher'>('syllabus');
+  const [activeTab, setActiveTab] = useState<'syllabus' | 'helper' | 'portfolio' | 'teacher'>('syllabus');
   
   // Custom saved outlines tracked in client app state
   const [customSavedOutlines, setCustomSavedOutlines] = useState<OutlineSubmission[]>(() => {
@@ -84,9 +104,20 @@ export default function App() {
 
   // API Key & Model management
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('vm5_api_key') || '');
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('vm5_model') || 'gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const saved = localStorage.getItem('vm5_model');
+    // Discard stale ids from before model names were fixed (e.g. gemini-3-flash-preview,
+    // which no longer resolves to anything) so old browsers don't keep wasting a failed
+    // attempt on a dead model before falling through to a real one.
+    const isKnown = saved && AI_MODELS.some(m => m.id === saved);
+    return isKnown ? saved! : 'gemini-flash-latest';
+  });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
+  // Whether the server has its own default Gemini key (set via GEMINI_API_KEY env var),
+  // so AI can work even for a student/teacher who never entered a personal key here.
+  const [serverHasKey, setServerHasKey] = useState(false);
+  const aiIsReady = !!apiKey || serverHasKey;
 
   // Tab permissions configuration
   const [tabPermissions, setTabPermissions] = useState<Record<string, { student: boolean; guest: boolean }>>(() => {
@@ -94,8 +125,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : {
       syllabus: { student: true, guest: true },
       helper: { student: true, guest: true },
-      game: { student: true, guest: true },
-      detective: { student: true, guest: true },
       portfolio: { student: true, guest: true }
     };
   });
@@ -126,6 +155,14 @@ export default function App() {
     }
     return null;
   });
+  // PIN-free public roster (name/avatar only) used to render the student picker
+  // before this device has proven it's allowed to see anything more (see Phase 1
+  // security notes: full classInfo, which includes PINs, is only fetched once
+  // this device is teacher-authenticated or has an already-verified student session).
+  const [studentRoster, setStudentRoster] = useState<{ className: string; schoolName?: string; students: StudentEntry[] } | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [classCodeStatus, setClassCodeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isConnectingClassCode, setIsConnectingClassCode] = useState(false);
   const [currentStudent, setCurrentStudent] = useState<StudentEntry | null>(() => {
     const savedId = localStorage.getItem('vm5_current_student');
     const savedClass = localStorage.getItem('vm5_class_info');
@@ -168,6 +205,8 @@ export default function App() {
   const [showAdminUnlockModal, setShowAdminUnlockModal] = useState(false);
   const [adminUnlockInput, setAdminUnlockInput] = useState('');
   const [adminUnlockError, setAdminUnlockError] = useState(false);
+  const [isAdminVerifying, setIsAdminVerifying] = useState(false);
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('vm5_admin_key') || '');
   const [adminStats, setAdminStats] = useState<any[]>([]);
   const [isAdminLoading, setIsAdminLoading] = useState(false);
 
@@ -198,7 +237,7 @@ export default function App() {
     try {
       const response = await fetch('/api/admin/stats', {
         headers: {
-          'x-admin-key': 'admin9999'
+          'x-admin-key': adminKey
         }
       });
       if (response.ok) {
@@ -221,12 +260,21 @@ export default function App() {
     }
   }, [isAdminAuthenticated]);
 
-  // Show settings modal on first load if teacher is authenticated but has no API key
+  // Fetch whether the server has its own default Gemini key once on load.
   useEffect(() => {
-    if (isTeacherAuthenticated && !apiKey) {
+    fetch('/api/gemini/status')
+      .then(res => res.json())
+      .then(data => setServerHasKey(!!data.hasServerKey))
+      .catch(() => setServerHasKey(false));
+  }, []);
+
+  // Show settings modal on first load if teacher is authenticated but no key is available
+  // anywhere (neither their own, nor a server-wide default one).
+  useEffect(() => {
+    if (isTeacherAuthenticated && !aiIsReady) {
       setShowSettingsModal(true);
     }
-  }, [isTeacherAuthenticated]);
+  }, [isTeacherAuthenticated, aiIsReady]);
 
   // --- CLOUD SYNC ON STARTUP ---
   useEffect(() => {
@@ -234,36 +282,59 @@ export default function App() {
 
     const syncClassAndSubmissions = async () => {
       try {
-        // 1. Sync Class Info
-        const classRes = await fetch(`/api/sync/class-info?teacherId=${teacherId}`);
-        if (classRes.ok) {
-          const classData = await classRes.json();
-          if (classData.success) {
-            if (classData.classInfo) {
-              setClassInfo(classData.classInfo);
-              localStorage.setItem('vm5_class_info', JSON.stringify(classData.classInfo));
-            } else {
-              // Server database is empty, but we have local classInfo! Let's auto-push it to server.
-              const localClassSaved = localStorage.getItem('vm5_class_info');
-              if (localClassSaved) {
-                try {
-                  const parsedLocal = JSON.parse(localClassSaved);
-                  if (parsedLocal && parsedLocal.students && parsedLocal.students.length > 0) {
-                    await fetch('/api/sync/class-info', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        teacherId,
-                        classInfo: parsedLocal
-                      })
-                    });
-                    console.log('Auto-synchronized local class info to server database.');
+        // 1. Sync Class Info.
+        // IMPORTANT: only fetch the full roster (which includes every student's PIN) once
+        // this device has actually authenticated as the teacher or as a specific student.
+        // Otherwise (e.g. a visitor who just typed in a class code, or a shared/unauthenticated
+        // browser that still has an old teacherId cached), only fetch the PIN-free public roster
+        // so PINs never reach a browser that hasn't proven it's allowed to see them.
+        const isAuthenticatedOnThisDevice = isTeacherAuthenticated || !!currentStudent;
+
+        if (isAuthenticatedOnThisDevice) {
+          const classRes = await fetch(`/api/sync/class-info?teacherId=${teacherId}`);
+          if (classRes.ok) {
+            const classData = await classRes.json();
+            if (classData.success) {
+              if (classData.classInfo) {
+                setClassInfo(classData.classInfo);
+                localStorage.setItem('vm5_class_info', JSON.stringify(classData.classInfo));
+              } else {
+                // Server database is empty, but we have local classInfo! Let's auto-push it to server.
+                const localClassSaved = localStorage.getItem('vm5_class_info');
+                if (localClassSaved) {
+                  try {
+                    const parsedLocal = JSON.parse(localClassSaved);
+                    if (parsedLocal && parsedLocal.students && parsedLocal.students.length > 0) {
+                      await fetch('/api/sync/class-info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          teacherId,
+                          classInfo: parsedLocal
+                        })
+                      });
+                      console.log('Auto-synchronized local class info to server database.');
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse or auto-sync local classInfo:', e);
                   }
-                } catch (e) {
-                  console.error('Failed to parse or auto-sync local classInfo:', e);
                 }
               }
             }
+          }
+        } else if (!classInfo) {
+          // Not authenticated on this device yet: only pull the PIN-free roster, and only
+          // to populate the student-picker screen (never overwrite an existing trusted local copy).
+          try {
+            const rosterRes = await fetch(`/api/sync/roster?teacherId=${teacherId}`);
+            if (rosterRes.ok) {
+              const rosterData = await rosterRes.json();
+              if (rosterData.success && rosterData.classInfo) {
+                setStudentRoster(rosterData.classInfo);
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to fetch public roster:', e);
           }
         }
 
@@ -320,7 +391,7 @@ export default function App() {
     };
 
     syncClassAndSubmissions();
-  }, [teacherId, currentStudent?.id]);
+  }, [teacherId, currentStudent?.id, isTeacherAuthenticated]);
 
 
   // Auto-redirect unauthorized users away from teacher tab or disabled tabs
@@ -371,15 +442,32 @@ export default function App() {
     }
   };
 
-  const handleAdminUnlockSubmit = () => {
-    if (adminUnlockInput === 'admin9999') {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('vm5_is_admin', 'true');
-      setShowAdminUnlockModal(false);
-      setAdminUnlockInput('');
-      setAdminUnlockError(false);
-    } else {
+  const handleAdminUnlockSubmit = async () => {
+    if (!adminUnlockInput.trim() || isAdminVerifying) return;
+    setIsAdminVerifying(true);
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: adminUnlockInput })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAdminKey(adminUnlockInput);
+        sessionStorage.setItem('vm5_admin_key', adminUnlockInput);
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('vm5_is_admin', 'true');
+        setShowAdminUnlockModal(false);
+        setAdminUnlockInput('');
+        setAdminUnlockError(false);
+      } else {
+        setAdminUnlockError(true);
+      }
+    } catch (err) {
+      console.error('Failed to verify admin key:', err);
       setAdminUnlockError(true);
+    } finally {
+      setIsAdminVerifying(false);
     }
   };
 
@@ -420,6 +508,27 @@ export default function App() {
       } catch (err) {
         console.warn('Failed to sync outline to server:', err);
       }
+    }
+  };
+
+  // Teacher manually scores a saved submission (replaces the old AI auto-grading).
+  // Assumes customSavedOutlines already holds this student's submissions, which is
+  // true both for the student's own session and for a teacher viewing via
+  // onViewStudentPortfolio above.
+  const handleTeacherRateSubmission = async (studentId: string, submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => {
+    const updated = customSavedOutlines.map(s =>
+      s.id === submissionId ? { ...s, teacherReview: { score, maxScore, criteriaScores, comment, ratedAt: new Date().toISOString() } } : s
+    );
+    setCustomSavedOutlines(updated);
+    localStorage.setItem(`vm5_submissions_${studentId}`, JSON.stringify(updated));
+    try {
+      await fetch('/api/sync/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId, studentId, submissions: updated })
+      });
+    } catch (err) {
+      console.warn('Failed to sync teacher review to server:', err);
     }
   };
 
@@ -465,6 +574,8 @@ export default function App() {
     setIsAdminAuthenticated(false);
     sessionStorage.removeItem('vm5_is_teacher');
     sessionStorage.removeItem('vm5_is_admin');
+    sessionStorage.removeItem('vm5_admin_key');
+    setAdminKey('');
     localStorage.removeItem('vm5_current_student');
     setActiveTab('syllabus');
   };
@@ -481,15 +592,70 @@ export default function App() {
 
   const tabs = [
     { id: 'syllabus' as const, label: '📚 Thư viện dạng bài', icon: BookOpen, color: 'text-amber-600' },
-    { id: 'helper' as const, label: '💡 Dàn ý thông minh AI', icon: Sparkles, color: 'text-yellow-500' },
-    { id: 'game' as const, label: '🎮 Trò chơi sắp đặt', icon: Gamepad2, color: 'text-emerald-500' },
-    { id: 'detective' as const, label: '🕵️ Thám tử bắt lỗi', icon: Search, color: 'text-rose-500' },
+    { id: 'helper' as const, label: '💡 Dàn ý thông minh', icon: Sparkles, color: 'text-yellow-500' },
     { id: 'portfolio' as const, label: '🏆 Portfolio Tiến Bộ', icon: Award, color: 'text-purple-500' },
   ];
 
   // Helper to render student picker modal
+  // Verifies a student's PIN against the server (the real PIN is never sent to the browser)
+  const handleVerifyPin = async (student: StudentEntry) => {
+    if (isVerifyingPin) return;
+    setIsVerifyingPin(true);
+    try {
+      const res = await fetch('/api/sync/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId, studentId: student.id, pin: pinInput })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        handleSelectStudent(student);
+        setPickerStep('select');
+        setPinInput('');
+        setPinError(false);
+      } else {
+        setPinError(true);
+      }
+    } catch (err) {
+      console.error('Failed to verify PIN:', err);
+      setPinError(true);
+    } finally {
+      setIsVerifyingPin(false);
+    }
+  };
+
+  // Connects to a class using a teacher-provided code, fetching only the PIN-free roster.
+  const handleConnectClassCode = async (code: string) => {
+    if (!code.trim() || isConnectingClassCode) return;
+    setIsConnectingClassCode(true);
+    setClassCodeStatus(null);
+    try {
+      const res = await fetch(`/api/sync/roster?teacherId=${code.trim()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.classInfo) {
+          setTeacherId(code.trim());
+          localStorage.setItem('vm5_teacher_id', code.trim());
+          setStudentRoster(data.classInfo);
+          setClassCodeStatus({ type: 'success', message: 'Kết nối lớp học thành công! 🎉 Em hãy chọn tên của mình nhé.' });
+        } else {
+          setClassCodeStatus({ type: 'error', message: 'Không tìm thấy lớp học với mã này. Hãy hỏi cô giáo xem có đúng mã không nhé.' });
+        }
+      } else {
+        setClassCodeStatus({ type: 'error', message: 'Không kết nối được với máy chủ. Vui lòng thử lại.' });
+      }
+    } catch (err) {
+      setClassCodeStatus({ type: 'error', message: 'Lỗi kết nối mạng.' });
+    } finally {
+      setIsConnectingClassCode(false);
+    }
+  };
+
   const renderStudentPicker = () => {
-    if (!classInfo) {
+    // PIN-free roster used purely to render names/avatars until this device authenticates.
+    const rosterSource = classInfo || studentRoster;
+
+    if (!rosterSource) {
       return (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-overlay bg-black/40 backdrop-blur-xs"
@@ -516,35 +682,27 @@ export default function App() {
                   type="text"
                   placeholder="Mã lớp học (ví dụ: t_abc123)..."
                   id="student-sync-code-input"
-                  className="w-full text-center text-xs font-mono py-2.5 px-3 rounded-xl border border-neutral-200 focus:outline-none focus:border-amber-400 bg-neutral-50 focus:bg-white transition"
-                />
-                <button
-                  onClick={async () => {
-                    const input = (document.getElementById('student-sync-code-input') as HTMLInputElement)?.value?.trim();
-                    if (!input) return;
-                    try {
-                      const res = await fetch(`/api/sync/class-info?teacherId=${input}`);
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (data.success && data.classInfo) {
-                          setTeacherId(input);
-                          localStorage.setItem('vm5_teacher_id', input);
-                          setClassInfo(data.classInfo);
-                          localStorage.setItem('vm5_class_info', JSON.stringify(data.classInfo));
-                          alert('Kết nối lớp học thành công! 🎉 Em hãy chọn tên của mình nhé.');
-                        } else {
-                          alert('Không tìm thấy lớp học với mã này. Hãy hỏi cô giáo xem có đúng mã không nhé.');
-                        }
-                      } else {
-                        alert('Không kết nối được với máy chủ. Vui lòng thử lại.');
-                      }
-                    } catch (err) {
-                      alert('Lỗi kết nối mạng.');
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleConnectClassCode((e.target as HTMLInputElement).value);
                     }
                   }}
-                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer"
+                  className="w-full text-center text-xs font-mono py-2.5 px-3 rounded-xl border border-neutral-200 focus:outline-none focus:border-amber-400 bg-neutral-50 focus:bg-white transition"
+                />
+                {classCodeStatus && (
+                  <p className={`text-[11px] font-medium ${classCodeStatus.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {classCodeStatus.message}
+                  </p>
+                )}
+                <button
+                  onClick={() => {
+                    const input = (document.getElementById('student-sync-code-input') as HTMLInputElement)?.value || '';
+                    handleConnectClassCode(input);
+                  }}
+                  disabled={isConnectingClassCode}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  Kết nối lớp học 🔗
+                  {isConnectingClassCode ? 'Đang kết nối...' : 'Kết nối lớp học 🔗'}
                 </button>
               </div>
             </div>
@@ -567,14 +725,14 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-heading font-extrabold text-neutral-800">🎒 Em tên gì nhỉ?</h2>
-                  <p className="text-xs text-neutral-500">{classInfo.className} • Chọn tên của em</p>
+                  <p className="text-xs text-neutral-500">{rosterSource.className} • Chọn tên của em</p>
                 </div>
                 <button onClick={() => { setShowStudentPicker(false); setPickerStep('select'); }} className="p-2 hover:bg-neutral-100 rounded-xl transition cursor-pointer">
                   <X className="w-5 h-5 text-neutral-400" />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-1">
-                {classInfo.students.map((student) => {
+                {rosterSource.students.map((student) => {
                   const isActive = currentStudent?.id === student.id;
                   return (
                     <button
@@ -592,28 +750,20 @@ export default function App() {
                   );
                 })}
               </div>
-              <div className="pt-2.5 border-t border-neutral-100 flex justify-center">
+              <div className="pt-2.5 border-t border-neutral-100 flex flex-col items-center gap-1.5">
+                {classCodeStatus && (
+                  <p className={`text-[11px] font-medium ${classCodeStatus.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {classCodeStatus.message}
+                  </p>
+                )}
                 <button
                   onClick={() => {
                     const newCode = prompt('Nhập mã đồng bộ lớp học do cô giáo cung cấp (ví dụ: t_abc123):');
-                    if (!newCode || !newCode.trim()) return;
-                    const cleanCode = newCode.trim();
-                    fetch(`/api/sync/class-info?teacherId=${cleanCode}`)
-                      .then(res => res.json())
-                      .then(data => {
-                        if (data.success && data.classInfo) {
-                          setTeacherId(cleanCode);
-                          localStorage.setItem('vm5_teacher_id', cleanCode);
-                          setClassInfo(data.classInfo);
-                          localStorage.setItem('vm5_class_info', JSON.stringify(data.classInfo));
-                          alert('Đã kết nối lớp học mới thành công! 🎉');
-                        } else {
-                          alert('Không tìm thấy lớp học với mã này. Hãy kiểm tra lại.');
-                        }
-                      })
-                      .catch(() => alert('Lỗi kết nối mạng.'));
+                    if (!newCode) return;
+                    handleConnectClassCode(newCode);
                   }}
-                  className="text-[11px] text-amber-600 hover:text-amber-700 font-bold transition flex items-center space-x-1 cursor-pointer bg-transparent border-none py-1"
+                  disabled={isConnectingClassCode}
+                  className="text-[11px] text-amber-600 hover:text-amber-700 font-bold transition flex items-center space-x-1 cursor-pointer bg-transparent border-none py-1 disabled:opacity-50"
                 >
                   <span>🔗 Kết nối mã lớp học khác</span>
                 </button>
@@ -649,13 +799,7 @@ export default function App() {
                     onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(false); }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && pinInput.length === 4 && pickerStudent) {
-                        if (pinInput === pickerStudent.pin) {
-                          handleSelectStudent(pickerStudent);
-                          setPickerStep('select');
-                          setPinInput('');
-                        } else {
-                          setPinError(true);
-                        }
+                        handleVerifyPin(pickerStudent);
                       }
                     }}
                     placeholder="• • • •"
@@ -673,19 +817,11 @@ export default function App() {
                 <p className="text-[10px] text-neutral-400">Nhập 4 số mã PIN cô giáo đã phát cho em</p>
 
                 <button
-                  onClick={() => {
-                    if (pickerStudent && pinInput === pickerStudent.pin) {
-                      handleSelectStudent(pickerStudent);
-                      setPickerStep('select');
-                      setPinInput('');
-                    } else {
-                      setPinError(true);
-                    }
-                  }}
-                  disabled={pinInput.length !== 4}
+                  onClick={() => pickerStudent && handleVerifyPin(pickerStudent)}
+                  disabled={pinInput.length !== 4 || isVerifyingPin}
                   className="w-48 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-sm transition shadow-md cursor-pointer disabled:opacity-40 flex items-center justify-center space-x-2"
                 >
-                  <span>Vào học thôi! 🚀</span>
+                  <span>{isVerifyingPin ? 'Đang kiểm tra...' : 'Vào học thôi! 🚀'}</span>
                 </button>
               </div>
             </>
@@ -817,9 +953,10 @@ export default function App() {
               </button>
               <button
                 onClick={handleAdminUnlockSubmit}
-                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer"
+                disabled={isAdminVerifying}
+                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Xác nhận
+                {isAdminVerifying ? 'Đang kiểm tra...' : 'Xác nhận'}
               </button>
             </div>
           </div>
@@ -836,8 +973,9 @@ export default function App() {
         
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-4xl mx-auto w-full">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0.6, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25 }}
             className="text-center mb-8 space-y-4"
           >
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 via-orange-400 to-rose-400 shadow-xl text-5xl mb-2 select-none">
@@ -863,6 +1001,7 @@ export default function App() {
               className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl border border-amber-100 shadow-lg hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between text-left relative overflow-hidden group"
               onClick={() => {
                 setPickerStep('select');
+                setClassCodeStatus(null);
                 setShowStudentPicker(true);
               }}
             >
@@ -920,7 +1059,7 @@ export default function App() {
 
         <div className="py-6 border-t border-amber-100/40 text-center space-y-2">
           <p className="text-[10px] text-neutral-400 font-medium">
-            © {new Date().getFullYear()} VietMaster 5 • Ms. Ngọc Mai
+            © {new Date().getFullYear()} VietMaster 5 • Cô Đào Ngọc Mai
           </p>
           <button
             onClick={() => {
@@ -1082,14 +1221,9 @@ export default function App() {
                 📝
               </motion.div>
               <div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-lg font-heading font-extrabold text-white tracking-tight drop-shadow-sm">VietMaster 5</h1>
-                  <span className="hidden sm:inline-flex bg-white/25 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/30">
-                    Bản đồ ý tưởng lớp 5
-                  </span>
-                </div>
+                <h1 className="text-lg font-heading font-extrabold text-white tracking-tight drop-shadow-sm">VietMaster 5</h1>
                 <p className="text-[11px] text-white/80 font-medium mt-0.5 hidden sm:block">
-                  Huấn luyện viên rèn luyện dàn ý thông minh & Đo lường sự tiến bộ ✨
+                  Gợi mở ý tưởng ✦ Rèn cách viết ✦ Cùng tiến bộ ✨
                 </p>
               </div>
             </div>
@@ -1105,6 +1239,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     setPickerStep('select');
+                    setClassCodeStatus(null);
                     setShowStudentPicker(true);
                   }}
                   className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm border border-white/30 py-1.5 px-3 rounded-xl hover:bg-white/30 transition cursor-pointer"
@@ -1189,46 +1324,8 @@ export default function App() {
       </header>
 
       {/* ===== HERO WELCOME BANNER ===== */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-400 to-rose-400 shadow-lg" style={{ maxHeight: '180px' }}>
-          {/* Text content - left side */}
-          <div className="relative z-10 flex items-center justify-between h-full">
-            <div className="flex items-center space-x-3 p-5 sm:p-6 max-w-lg">
-              <motion.div 
-                className="w-12 h-12 rounded-2xl bg-white/25 backdrop-blur-sm border border-white/30 flex items-center justify-center text-2xl shadow-md shrink-0"
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                🦉
-              </motion.div>
-              <div className="space-y-1">
-                <h3 className="text-sm sm:text-base font-heading font-extrabold text-white drop-shadow-sm">
-                  Mỗi bài văn là một cuộc phiêu lưu! 🌟
-                </h3>
-                <p className="text-[11px] sm:text-xs text-white/90 leading-relaxed drop-shadow-sm">
-                  {currentStudent ? `${currentStudent.name} ơi, hôm nay mình sẽ kể câu chuyện gì nhỉ? ✨` : 'Em có cả một thế giới trong trí tưởng tượng — hãy viết nó ra nào! ✍️'}
-                </p>
-                <span className="inline-flex items-center text-[10px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-white/20">
-                  <CheckSquare className="w-3 h-3 mr-1" />
-                  {apiKey ? '🦉 AI sẵn sàng ✓' : '📖 Offline mode'}
-                </span>
-              </div>
-            </div>
-
-            {/* Illustration - right side, visible */}
-            <div className="hidden sm:block h-[180px] w-[320px] shrink-0">
-              <img 
-                src="/hero-banner.png" 
-                alt="VietMaster 5 - Cú Văn và các bạn nhỏ" 
-                className="h-full w-full object-cover object-center rounded-r-2xl"
-              />
-            </div>
-          </div>
-
-          {/* Decorative sparkles */}
-          <div className="absolute top-2 left-1/3 text-lg opacity-20 animate-sparkle select-none">✨</div>
-          <div className="absolute bottom-2 left-1/4 text-sm opacity-15 animate-float select-none" style={{ animationDelay: '1s' }}>🌟</div>
-        </div>
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-5">
+        <VietMasterHero />
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
@@ -1297,30 +1394,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeTab === 'game' && (
-            <motion.div
-              key="game-view"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
-            >
-              <SequenceGame />
-            </motion.div>
-          )}
-
-          {activeTab === 'detective' && (
-            <motion.div
-              key="detective-view"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
-            >
-              <DetectiveGame apiKey={apiKey} selectedModel={selectedModel} />
-            </motion.div>
-          )}
-
           {activeTab === 'portfolio' && (
             <motion.div
               key="portfolio-view"
@@ -1329,10 +1402,11 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
             >
-              <PortfolioTab 
-                studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)} 
-                customSavedOutlines={customSavedOutlines} 
+              <PortfolioTab
+                studentProfile={currentStudent ? buildStudentProfile(currentStudent, customSavedOutlines, classInfo?.className) : buildStudentProfile({ id: 'guest', name: 'Khách', avatar: '🎒' }, [], classInfo?.className)}
+                customSavedOutlines={customSavedOutlines}
                 isTeacher={isTeacherAuthenticated}
+                onRateSubmission={currentStudent ? (submissionId, score, maxScore, criteriaScores, comment) => handleTeacherRateSubmission(currentStudent.id, submissionId, score, maxScore, criteriaScores, comment) : undefined}
               />
             </motion.div>
           )}
@@ -1353,11 +1427,21 @@ export default function App() {
                 onSaveClass={handleSaveClass}
                 tabPermissions={tabPermissions}
                 onUpdatePermissions={handleUpdatePermissions}
-                onViewStudentPortfolio={(student) => {
+                onViewStudentPortfolio={async (student) => {
                   setCurrentStudent(student);
                   localStorage.setItem('vm5_current_student', student.id);
-                  const saved = localStorage.getItem(`vm5_submissions_${student.id}`);
-                  setCustomSavedOutlines(saved ? JSON.parse(saved) : []);
+                  // Pull from the server first — the student's submissions were made on
+                  // their own device, so this teacher's browser has no local copy of them.
+                  try {
+                    const res = await fetch(`/api/sync/submissions?teacherId=${encodeURIComponent(teacherId)}&studentId=${encodeURIComponent(student.id)}`);
+                    const data = await res.json();
+                    const subs = data.success ? data.submissions : [];
+                    setCustomSavedOutlines(subs);
+                    localStorage.setItem(`vm5_submissions_${student.id}`, JSON.stringify(subs));
+                  } catch {
+                    const saved = localStorage.getItem(`vm5_submissions_${student.id}`);
+                    setCustomSavedOutlines(saved ? JSON.parse(saved) : []);
+                  }
                   setActiveTab('portfolio');
                 }}
                 teacherId={teacherId}
@@ -1393,7 +1477,7 @@ export default function App() {
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">📝</span>
                 <div>
-                  <p className="text-xs font-heading font-bold text-neutral-700 uppercase tracking-wider">VietMaster 5 • Bản Đồ Ý Tưởng Sư Phạm</p>
+                  <p className="text-xs font-heading font-bold text-neutral-700 uppercase tracking-wider">VietMaster 5</p>
                   <p className="text-[10px] text-neutral-400 font-medium mt-0.5">
                     Tiếng Việt Lớp 5 • Hỗ trợ bởi Gemini AI
                   </p>
@@ -1413,8 +1497,8 @@ export default function App() {
             {/* Credit line */}
             <div className="flex items-center space-x-2 text-xs text-neutral-500">
               <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
-              <span className="font-medium">Được tạo bởi</span>
-              <span className="font-heading font-bold text-amber-700">Ms. Ngọc Mai</span>
+              <span className="font-medium">Được phát triển bởi</span>
+              <span className="font-heading font-bold text-amber-700">Cô Đào Ngọc Mai</span>
               <span className="text-neutral-300">•</span>
               <span className="text-[10px] text-neutral-400">© {new Date().getFullYear()} VietMaster 5</span>
             </div>

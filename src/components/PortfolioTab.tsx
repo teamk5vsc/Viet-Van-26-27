@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { OutlineSubmission, StudentProfile } from '../types';
+import { OutlineSubmission, StudentProfile, RubricItem } from '../types';
 import { SYLLABUS_DATA } from '../data/syllabus';
 import { STRENGTH_CARDS } from '../data/strengthCards';
-import { 
-  Award, TrendingUp, BookOpen, Clock, Heart, Calendar, 
-  Map, FileText, ChevronRight, Bookmark, ArrowRight, Printer, Star, User
+import {
+  Award, TrendingUp, BookOpen, Clock, Heart, Calendar,
+  Map, FileText, ChevronRight, Bookmark, ArrowRight, Printer, Star, User, PenLine, Plus, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -15,24 +15,234 @@ interface PortfolioTabProps {
   studentProfile: StudentProfile;
   customSavedOutlines: OutlineSubmission[];
   isTeacher?: boolean;
+  onRateSubmission?: (submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => void;
 }
 
-export default function PortfolioTab({ studentProfile, customSavedOutlines, isTeacher = false }: PortfolioTabProps) {
+// Score of record for a submission: the teacher's manual rating, falling back to an
+// old AI-graded score (always out of 100) if this submission predates manual grading.
+const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score ?? sub.gradeAfter?.score ?? sub.gradeBefore?.score ?? 0;
+const maxScoreOf = (sub: OutlineSubmission) => {
+  // maxScore defaults to 100 when missing, both for legacy AI grades (always /100)
+  // and for a teacherReview saved before this field existed.
+  if (sub.teacherReview) return sub.teacherReview.maxScore || 100;
+  if (sub.gradeAfter || sub.gradeBefore) return 100;
+  return 0;
+};
+// Percentage form, for averaging across submissions whose point totals differ
+// (an 8-point rubric and a 100-point one aren't comparable as raw numbers).
+const percentOf = (sub: OutlineSubmission) => (maxScoreOf(sub) > 0 ? (scoreOf(sub) / maxScoreOf(sub)) * 100 : 0);
+
+type DraftRow = { name: string; max: string; score: string };
+const blankRow = (): DraftRow => ({ name: '', max: '', score: '' });
+
+// Shows the teacher's rating for a saved essay, and — for the teacher only —
+// a form to build whatever rubric fits this essay (the teacher names each
+// criterion and sets its own point value; the app only adds up the total).
+// Remounts (via the parent's `key`) whenever the selected submission changes,
+// so its local draft state always starts fresh.
+function TeacherReviewBlock({
+  submission,
+  isTeacher,
+  onSave,
+}: {
+  submission: OutlineSubmission;
+  isTeacher: boolean;
+  onSave?: (submissionId: string, score: number, maxScore: number, criteriaScores: RubricItem[], comment: string) => void;
+}) {
+  const existing = submission.teacherReview;
+  const [isEditing, setIsEditing] = useState(!existing);
+  const [rows, setRows] = useState<DraftRow[]>(() =>
+    existing?.criteriaScores && existing.criteriaScores.length > 0
+      ? existing.criteriaScores.map(c => ({ name: c.name, max: c.max.toString(), score: c.score.toString() }))
+      : [blankRow(), blankRow(), blankRow()]
+  );
+  const [comment, setComment] = useState(existing?.comment || '');
+
+  const updateRow = (idx: number, patch: Partial<DraftRow>) => {
+    setRows(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  };
+  const addRow = () => setRows([...rows, blankRow()]);
+  const removeRow = (idx: number) => setRows(rows.filter((_, i) => i !== idx));
+
+  const usableRows = rows.filter(r => r.name.trim() !== '' && r.max.trim() !== '');
+  const total = usableRows.reduce((sum, r) => sum + (Number(r.score) || 0), 0);
+  const maxTotal = usableRows.reduce((sum, r) => sum + (Number(r.max) || 0), 0);
+  const canSave = usableRows.length > 0 && usableRows.every(r => !Number.isNaN(Number(r.max)) && Number(r.max) > 0 && !Number.isNaN(Number(r.score)));
+
+  if (isTeacher) {
+    if (!isEditing && existing) {
+      return (
+        <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Đánh giá của cô: {existing.score}/{existing.maxScore}đ</strong>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center space-x-1 cursor-pointer"
+            >
+              <PenLine className="w-3 h-3" />
+              <span>Sửa</span>
+            </button>
+          </div>
+          {existing.criteriaScores && existing.criteriaScores.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-purple-800">
+              {existing.criteriaScores.map((item, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{item.name}</span>
+                  <span className="font-bold">{item.score}/{item.max}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {existing.comment && <p className="text-purple-950 text-[11px] leading-relaxed">{existing.comment}</p>}
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2.5">
+        <div>
+          <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Chấm điểm bài viết này</strong>
+          <p className="text-[10px] text-purple-600 mt-0.5">Tự đặt tiêu chí và thang điểm phù hợp với dạng bài — app chỉ cộng tổng giúp cô.</p>
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-[9px] font-bold text-purple-500 uppercase pl-0.5">
+            <span className="flex-1">Tiêu chí</span>
+            <span className="w-14 text-center">Điểm</span>
+            <span className="w-14 text-center">Tối đa</span>
+            <span className="w-5" />
+          </div>
+          {rows.map((row, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={row.name}
+                onChange={(e) => updateRow(idx, { name: e.target.value })}
+                placeholder="VD: Bố cục 3 phần"
+                className="flex-1 min-w-0 px-2 py-1 rounded-lg border border-purple-200 text-xs text-purple-900 focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+              />
+              <input
+                type="number"
+                min={0}
+                value={row.score}
+                onChange={(e) => updateRow(idx, { score: e.target.value })}
+                placeholder="0"
+                className="w-14 px-1.5 py-1 rounded-lg border border-purple-200 text-xs font-bold text-purple-900 text-center focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+              />
+              <input
+                type="number"
+                min={0}
+                value={row.max}
+                onChange={(e) => updateRow(idx, { max: e.target.value })}
+                placeholder="0"
+                className="w-14 px-1.5 py-1 rounded-lg border border-purple-200 text-xs text-purple-900 text-center focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+              />
+              <button
+                onClick={() => removeRow(idx)}
+                className="w-5 h-5 flex items-center justify-center text-purple-300 hover:text-red-500 cursor-pointer shrink-0"
+                aria-label="Xoá tiêu chí"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={addRow}
+            className="flex items-center space-x-1 text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer pt-0.5"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Thêm tiêu chí</span>
+          </button>
+        </div>
+        <div className="flex items-center justify-between pt-1.5 border-t border-purple-200/60">
+          <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wide">Tổng điểm</span>
+          <span className="text-sm font-extrabold text-purple-900">{total} / {maxTotal || 0}đ</span>
+        </div>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Nhận xét cho học sinh (không bắt buộc)..."
+          rows={2}
+          className="w-full px-2.5 py-1.5 rounded-lg border border-purple-200 text-[11px] text-purple-900 resize-none focus:outline-hidden focus:ring-2 focus:ring-purple-300"
+        />
+        <div className="flex justify-end gap-2">
+          {existing && (
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-neutral-500 hover:bg-neutral-100 cursor-pointer"
+            >
+              Huỷ
+            </button>
+          )}
+          <button
+            disabled={!canSave}
+            onClick={() => {
+              const criteriaScores: RubricItem[] = usableRows.map(r => ({
+                name: r.name.trim(),
+                max: Number(r.max),
+                score: Number(r.score) || 0,
+              }));
+              onSave?.(submission.id, total, maxTotal, criteriaScores, comment.trim());
+              setIsEditing(false);
+            }}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            Lưu đánh giá
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Student / read-only view
+  if (existing) {
+    return (
+      <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-2">
+        <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">Nhận xét của cô: {existing.score}/{existing.maxScore}đ</strong>
+        {existing.criteriaScores && existing.criteriaScores.length > 0 && (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-purple-800">
+            {existing.criteriaScores.map((item, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span>{item.name}</span>
+                <span className="font-bold">{item.score}/{item.max}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {existing.comment && <p className="text-purple-950 text-[11px] leading-relaxed">{existing.comment}</p>}
+      </div>
+    );
+  }
+  return (
+    <div className="bg-neutral-100/60 border border-neutral-200/50 p-3 rounded-xl">
+      <p className="text-[11px] text-neutral-500 italic">Bài viết này chưa được cô chấm điểm.</p>
+    </div>
+  );
+}
+
+export default function PortfolioTab({ studentProfile, customSavedOutlines, isTeacher = false, onRateSubmission }: PortfolioTabProps) {
   // Combine static and custom saved outlines
   const allSubmissions = [...customSavedOutlines, ...PAST_SUBMISSIONS_MOCK];
-  
-  const [selectedSubmission, setSelectedSubmission] = useState<OutlineSubmission | null>(allSubmissions[0] || null);
+
+  // Track the selected submission by id, not by object reference — customSavedOutlines
+  // gets a new array (with a new object for the rated submission) every time the
+  // teacher saves a review, so holding onto the old object here would keep showing
+  // stale data after saving.
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(allSubmissions[0]?.id || null);
+  const selectedSubmission = allSubmissions.find(s => s.id === selectedSubmissionId) || null;
   const [showParentReport, setShowParentReport] = useState(false);
 
   // Growth calculations
   const totalSubmissions = allSubmissions.length;
-  // Compute true average from all available records
-  const averageAllScores = Math.round(
-    allSubmissions.reduce((acc, sub) => {
-      const activeScore = sub.gradeAfter?.score || sub.gradeBefore?.score || 70;
-      return acc + activeScore;
-    }, 0) / (totalSubmissions || 1)
-  );
+  // Average only counts submissions the teacher has actually rated — an unrated
+  // essay contributes no score rather than a made-up default. Rated-ness checks
+  // for a review at all (not score > 0) so a legitimate 0-point grade still counts.
+  // Scores are averaged as percentages since different submissions can be graded
+  // out of different point totals (an 8-point rubric vs a 100-point one).
+  const isRated = (sub: OutlineSubmission) => !!(sub.teacherReview || sub.gradeAfter || sub.gradeBefore);
+  const ratedSubmissions = allSubmissions.filter(isRated);
+  const averageAllScores = ratedSubmissions.length > 0
+    ? Math.round(ratedSubmissions.reduce((acc, sub) => acc + percentOf(sub), 0) / ratedSubmissions.length)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -65,7 +275,7 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
           <div className="text-center bg-neutral-50 p-2.5 rounded-xl border border-neutral-100 min-w-[90px]">
             <Star className="w-4 h-4 text-amber-500 mx-auto mb-1 fill-amber-300" />
             <span className="text-[10px] uppercase text-neutral-400 font-semibold block">Điểm Trung Bình</span>
-            <span className="text-[16px] font-extrabold text-neutral-800">{averageAllScores}/100</span>
+            <span className="text-[16px] font-extrabold text-neutral-800">{ratedSubmissions.length > 0 ? `${averageAllScores}/100` : 'Chưa chấm'}</span>
           </div>
 
           <div className="text-center bg-neutral-50 p-2.5 rounded-xl border border-neutral-100 min-w-[90px]">
@@ -76,8 +286,10 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
 
           <div className="text-center bg-neutral-50 p-2.5 rounded-xl border border-neutral-100 min-w-[90px]">
             <TrendingUp className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-            <span className="text-[10px] uppercase text-neutral-400 font-semibold block">Mức tiến bộ TB</span>
-            <span className="text-[16px] font-extrabold text-emerald-600">+{studentProfile.progressScore}đ</span>
+            <span className="text-[10px] uppercase text-neutral-400 font-semibold block">Mức tiến bộ</span>
+            <span className="text-[16px] font-extrabold text-emerald-600">
+              {ratedSubmissions.length >= 2 ? `+${studentProfile.progressScore}đ` : 'Chưa đủ bài'}
+            </span>
           </div>
 
           <div className="text-center bg-neutral-50 p-2.5 rounded-xl border border-neutral-100 min-w-[90px]">
@@ -287,39 +499,49 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Các điểm mốc cốt lõi:</span>
                       <ul className="list-disc pl-4 space-y-1">
-                        <li>Trung bình đạt điểm mốc: <strong>{averageAllScores}/100đ</strong> 🏆</li>
+                        <li>Trung bình đạt điểm mốc: <strong>{ratedSubmissions.length > 0 ? `${averageAllScores}/100đ` : 'Chưa có bài được chấm'}</strong> 🏆</li>
                         <li>Đã thực hành: <strong>{totalSubmissions} chủ đề đa dạng</strong></li>
-                        <li>Mức tăng điểm thăng tiến: <strong>+{studentProfile.progressScore}đ</strong> ở Lần 2</li>
+                        {ratedSubmissions.length >= 2 && (
+                          <li>Mức tăng điểm thăng tiến: <strong>+{studentProfile.progressScore}đ</strong></li>
+                        )}
                       </ul>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Các Huy hiệu tiêu biểu:</span>
+                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Các Huy hiệu đã đạt:</span>
                       <ul className="list-disc pl-4 space-y-1">
-                        <li>Kẻ chuyện sáng tạo (Tấm cám) ✔</li>
-                        <li>Người quan sát tinh tế (Tả cảnh sông nước) ✔</li>
+                        {studentProfile.badges.filter(b => b.unlocked).length > 0 ? (
+                          studentProfile.badges.filter(b => b.unlocked).map(b => (
+                            <li key={b.id}>{b.title} {b.emoji}</li>
+                          ))
+                        ) : (
+                          <li className="text-neutral-400">Chưa mở khoá huy hiệu nào</li>
+                        )}
                       </ul>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Nhận định sư phạm từ AI Huấn luyện viên:</span>
-                    <p className="bg-amber-50/30 p-4 rounded-xl border border-amber-100/30 text-amber-900 leading-relaxed">
-                      "Bé {studentProfile.name} cho thấy năng khiếu cảm thụ không gian tự nhiên và các hoạt động sinh động xuất sắc. Đặc biệt, bé có tinh thần tự hoàn khảo, chủ động thay đổi các ý chung chung vắn tắt của Lần 1 thành những hình tượng bừng sáng ở Lần 2. Kỹ năng lập dàn bài đạt xếp loại <strong>{studentProfile.level}</strong>. Khuyến khích bé bộc lộ cảm xúc mộc mạc hướng nội nhiều hơn."
-                    </p>
-                  </div>
-
-                  <div className="space-y-1 pt-2">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Định hướng nâng cấp kỳ tới:</span>
-                    <p>
-                      Mùa tới, bé cần rèn thêm cách hành văn luận điểm ý kiến phản biện đa chiều tinh nhuệ, tránh sử dụng lặp từ ở các phần thân bài miêu tả cảnh hoạt động dông dài.
-                    </p>
+                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Nhận xét từ giáo viên:</span>
+                    {(() => {
+                      const commented = allSubmissions.filter(s => s.teacherReview?.comment);
+                      const latest = commented.sort((a, b) => new Date(b.teacherReview!.ratedAt).getTime() - new Date(a.teacherReview!.ratedAt).getTime())[0];
+                      return latest ? (
+                        <p className="bg-amber-50/30 p-4 rounded-xl border border-amber-100/30 text-amber-900 leading-relaxed">
+                          "{latest.teacherReview!.comment}" — nhận xét cho bài "{latest.topic}"
+                        </p>
+                      ) : (
+                        <p className="bg-amber-50/30 p-4 rounded-xl border border-amber-100/30 text-amber-900/70 leading-relaxed italic">
+                          Giáo viên chưa để lại nhận xét cho bài viết nào.
+                        </p>
+                      );
+                    })()}
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center border-t border-dashed border-neutral-200 pt-5 text-[10px] text-neutral-400 font-semibold uppercase">
-                  <span>Kho dữ liệu: Firebase persistent</span>
-                  <span>Ký bởi: Trợ lý Sư phạm VietMaster ✍️</span>
+                  <span>Ngày xuất báo cáo: {new Date().toLocaleDateString('vi-VN')}</span>
+                  <span>Ký bởi: VietMaster 5 ✍️</span>
                 </div>
               </motion.div>
             ) : (
@@ -336,13 +558,13 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                     <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                       {allSubmissions.map((sub, idx) => {
                         const isChosen = selectedSubmission?.id === sub.id;
-                        const scoreDisp = sub.gradeAfter?.score || sub.gradeBefore?.score || 70;
+                        const rated = isRated(sub);
                         const genreMetadata = SYLLABUS_DATA.find(g => g.id === sub.type);
 
                         return (
                           <div
                             key={sub.id}
-                            onClick={() => setSelectedSubmission(sub)}
+                            onClick={() => setSelectedSubmissionId(sub.id)}
                             className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all duration-200 ${
                               isChosen
                                 ? 'bg-amber-50/70 border-amber-200 text-amber-900 shadow-xs ring-1 ring-amber-300/30'
@@ -356,23 +578,26 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                                 </span>
                                 <h5 className="text-xs font-bold leading-tight break-words">{sub.topic}</h5>
                               </div>
-                              <span className="bg-amber-600 text-white font-bold text-[11px] py-0.5 px-2 rounded-md">
-                                {scoreDisp}đ
-                              </span>
+                              {rated ? (
+                                <span className="bg-amber-600 text-white font-bold text-[11px] py-0.5 px-2 rounded-md shrink-0">
+                                  {scoreOf(sub)}/{maxScoreOf(sub)}đ
+                                </span>
+                              ) : (
+                                <span className="bg-neutral-200 text-neutral-500 font-bold text-[10px] py-0.5 px-2 rounded-md shrink-0">
+                                  Chưa chấm
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center space-x-1.5 text-[10px] text-neutral-400 mt-2 font-semibold">
                               <Calendar className="w-3 h-3" />
                               <span>{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</span>
-                              {sub.comparison && (
-                                <span className="text-emerald-600 font-bold ml-auto">+ {sub.comparison.scoreDiff}đ thăng tiến</span>
-                              )}
                             </div>
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* Detailed selected card viewer (Before - After expansion panel) */}
+                    {/* Detailed selected card viewer */}
                     <AnimatePresence mode="wait">
                       {selectedSubmission ? (
                         <motion.div
@@ -383,38 +608,24 @@ export default function PortfolioTab({ studentProfile, customSavedOutlines, isTe
                           className="bg-neutral-50/60 rounded-2xl border border-neutral-100 p-5 space-y-4 text-xs"
                         >
                           <div className="border-b border-neutral-200/55 pb-2">
-                            <span className="text-[10px] text-amber-600 uppercase font-bold block">Trước → Sau Cải Tiến</span>
+                            <span className="text-[10px] text-amber-600 uppercase font-bold block">Bài viết đã lưu</span>
                             <h4 className="font-extrabold text-neutral-800 leading-snug break-words">{selectedSubmission.topic}</h4>
                           </div>
 
                           <div className="space-y-3">
-                            <div className="bg-white p-3 rounded-xl border border-neutral-100">
-                              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Dự thảo Lần 1:</span>
-                              <p className="text-neutral-500 leading-relaxed italic">{selectedSubmission.outlineBefore}</p>
-                            </div>
+                            <TeacherReviewBlock
+                              submission={selectedSubmission}
+                              isTeacher={isTeacher}
+                              onSave={onRateSubmission}
+                            />
 
-                            {selectedSubmission.outlineAfter && (
-                              <div className="bg-amber-50/20 p-3 rounded-xl border border-amber-100/50">
-                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Bản sửa đổi Lần 2:</span>
-                                <p className="text-amber-900 font-semibold leading-relaxed italic">{selectedSubmission.outlineAfter}</p>
-                              </div>
-                            )}
-
-                            {selectedSubmission.comparison && (
-                              <div className="p-3 bg-neutral-100 rounded-xl space-y-1 border border-neutral-200 text-[11px] leading-relaxed">
-                                <strong className="text-neutral-700 block">✓ Phân tích sự chuyển mình:</strong>
-                                <span className="text-neutral-600 italic block">
-                                  "{selectedSubmission.comparison.feedback.growthWords}"
-                                </span>
-                              </div>
-                            )}
-
-                            {selectedSubmission.reflection && (
-                              <div className="bg-purple-50/40 border border-purple-100/50 p-3 rounded-xl space-y-1.5">
-                                <strong className="text-purple-900 text-[10px] uppercase font-bold tracking-wider block">🧠 Ghi chép tự phản hồi (Reflection Log):</strong>
-                                <div className="space-y-1 text-purple-950 text-[11px]">
-                                  <p>• Thay đổi: {selectedSubmission.reflection.q1_changes}</p>
-                                  <p>• Lý do: {selectedSubmission.reflection.q2_reasons}</p>
+                            {selectedSubmission.studentEssay && (
+                              <div className="bg-amber-50/40 border border-amber-100/50 p-4 rounded-xl space-y-2">
+                                <strong className="text-amber-950 text-[10px] uppercase font-extrabold tracking-wider block flex items-center space-x-1">
+                                  <span>✍️ Bài viết của học sinh:</span>
+                                </strong>
+                                <div className="bg-white p-3.5 rounded-lg border border-amber-100/50 shadow-2xs text-xs text-neutral-800 leading-relaxed font-serif whitespace-pre-line select-text">
+                                  {selectedSubmission.studentEssay}
                                 </div>
                               </div>
                             )}

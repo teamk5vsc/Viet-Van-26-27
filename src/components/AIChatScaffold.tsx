@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { callGeminiApiDirectly } from '../utils/geminiDirect';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   outlinePart?: { section: string; content: string[] } | null;
+  isSimulated?: boolean;
 }
 
 interface AIChatScaffoldProps {
@@ -580,28 +580,12 @@ export default function AIChatScaffold({ topic, genreId, apiKey, selectedModel }
         throw new Error(data?.error || 'Invalid API response');
       }
     } catch (err) {
-      console.warn('Gemini chat failed, trying direct client call:', err);
-      if (apiKey) {
-        try {
-          data = await callGeminiApiDirectly({
-            action: 'chat',
-            messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-            topic: topic || 'Bài viết tự do',
-            type: genreId,
-            model: selectedModel,
-            apiKey
-          });
-        } catch (directErr) {
-          console.error('Direct client-side Gemini chat failed:', directErr);
-          data = getMockReply();
-        }
-      } else {
-        data = getMockReply();
-      }
+      console.warn('Gemini chat failed, using offline mock reply:', err);
+      data = { ...getMockReply(), isSimulated: true };
     }
 
     try {
-      const aiMsg: ChatMessage = { role: 'assistant', content: data.reply, outlinePart: data.suggestedOutlinePart || null };
+      const aiMsg: ChatMessage = { role: 'assistant', content: data.reply, outlinePart: data.suggestedOutlinePart || null, isSimulated: !!data.isSimulated };
       setMessages(prev => [...prev, aiMsg]);
       
       if (data.suggestedOutlinePart) {
@@ -652,6 +636,11 @@ export default function AIChatScaffold({ topic, genreId, apiKey, selectedModel }
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-br-md'
                     : 'bg-neutral-50 text-neutral-700 border border-neutral-100 rounded-bl-md'
                 }`}>
+                  {msg.role === 'assistant' && msg.isSimulated && (
+                    <div className="mb-1.5 text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                      <span>🔌</span><span>Câu trả lời minh hoạ (chưa bật AI thật)</span>
+                    </div>
+                  )}
                   {msg.content}
                   {/* Show outline suggestion card */}
                   {msg.outlinePart && (

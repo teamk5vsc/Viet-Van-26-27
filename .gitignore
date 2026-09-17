@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# Local JSON fallback storage (contains real class rosters/PINs when no Vercel KV is configured)
+/data/

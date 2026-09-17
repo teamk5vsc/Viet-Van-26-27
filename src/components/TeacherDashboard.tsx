@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ClassInfo, StudentEntry, StudentGroup, GroupAssignment } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ClassInfo, StudentEntry, StudentGroup, GroupAssignment, OutlineSubmission } from '../types';
 import { 
   Users, Award, AlertTriangle, CheckCircle, BarChart, 
   BookOpen, ChevronRight, Star, HelpCircle, FileText, Printer, Mail,
@@ -332,23 +332,48 @@ export default function TeacherDashboard({
     onSaveClass(updatedClassInfo);
   };
 
-  // Get student submissions from localStorage
-  const getStudentSubmissions = (studentId: string) => {
-    const saved = localStorage.getItem(`vm5_submissions_${studentId}`);
-    return saved ? JSON.parse(saved) : [];
+  // Submissions live on each student's own device; the teacher's browser only knows
+  // about them via the server sync, so fetch every student's submissions for this
+  // class up front instead of reading a (likely empty) local cache.
+  const [submissionsByStudent, setSubmissionsByStudent] = useState<Record<string, OutlineSubmission[]>>({});
+
+  useEffect(() => {
+    if (!teacherId) return;
+    fetch(`/api/sync/submissions?teacherId=${encodeURIComponent(teacherId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.submissions) setSubmissionsByStudent(data.submissions);
+      })
+      .catch(err => console.warn('Failed to load class submissions:', err));
+  }, [teacherId]);
+
+  const scoreOf = (sub: OutlineSubmission) => sub.teacherReview?.score ?? sub.gradeAfter?.score ?? sub.gradeBefore?.score ?? 0;
+  const maxScoreOf = (sub: OutlineSubmission) => {
+    // maxScore defaults to 100 when missing, for legacy AI grades (always /100) and
+    // for a teacherReview saved before this field existed.
+    if (sub.teacherReview) return sub.teacherReview.maxScore || 100;
+    if (sub.gradeAfter || sub.gradeBefore) return 100;
+    return 0;
   };
+  const isRated = (sub: OutlineSubmission) => !!(sub.teacherReview || sub.gradeAfter || sub.gradeBefore);
+  // Percentage, not raw points — submissions can be graded out of different point
+  // totals (an 8-point rubric one week, 100 the next), so raw scores aren't
+  // comparable across submissions when averaging.
+  const percentOf = (sub: OutlineSubmission) => (maxScoreOf(sub) > 0 ? (scoreOf(sub) / maxScoreOf(sub)) * 100 : 0);
+  const getStudentSubmissions = (studentId: string): OutlineSubmission[] => submissionsByStudent[studentId] || [];
 
   const selectedStudent = classInfo?.students.find(s => s.id === selectedStudentId) || null;
   const selectedSubmissions = selectedStudent ? getStudentSubmissions(selectedStudent.id) : [];
-  const selectedAvgScore = selectedSubmissions.length > 0 
-    ? Math.round(selectedSubmissions.reduce((acc: number, s: any) => acc + (s.gradeAfter?.score || s.gradeBefore?.score || 0), 0) / selectedSubmissions.length)
+  const selectedRatedPercents = selectedSubmissions.filter(isRated).map(percentOf);
+  const selectedAvgScore = selectedRatedPercents.length > 0
+    ? Math.round(selectedRatedPercents.reduce((a, b) => a + b, 0) / selectedRatedPercents.length)
     : 0;
 
   // Class-wide stats
   const allStudentStats = classInfo?.students.map(s => {
     const subs = getStudentSubmissions(s.id);
-    const scores = subs.map((sub: any) => sub.gradeAfter?.score || sub.gradeBefore?.score || 0).filter((sc: number) => sc > 0);
-    const avg = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+    const percents = subs.filter(isRated).map(percentOf);
+    const avg = percents.length > 0 ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) : 0;
     return { ...s, submissions: subs, avgScore: avg, count: subs.length };
   }) || [];
 
@@ -485,9 +510,7 @@ export default function TeacherDashboard({
                 <tbody className="divide-y divide-neutral-100">
                   {[
                     { id: 'syllabus', label: '📚 Thư viện dạng bài', desc: 'Thư viện lý thuyết, đề gợi ý và các quy tắc viết văn AI' },
-                    { id: 'helper', label: '💡 Dàn ý thông minh AI', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
-                    { id: 'game', label: '🎮 Trò chơi sắp đặt', desc: 'Trò chơi kéo thả sắp xếp bố cục câu chuyện' },
-                    { id: 'detective', label: '🕵️ Thám tử bắt lỗi', desc: 'Trò chơi tìm lỗi văn bản và đối chiếu kết quả' },
+                    { id: 'helper', label: '💡 Dàn ý thông minh', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
                     { id: 'portfolio', label: '🏆 Portfolio Tiến Bộ', desc: 'Hồ sơ năng lực học tập và bài viết mẫu đã lưu' },
                   ].map((tabItem) => {
                     const perm = tabPermissions[tabItem.id] || { student: true, guest: true };
@@ -655,7 +678,7 @@ export default function TeacherDashboard({
                         <span className="text-base">{s.avatar}</span>
                         <span className="text-[11px] font-semibold text-neutral-700 truncate max-w-[100px]">{s.name}</span>
                       </div>
-                      <span className="text-sm font-mono font-black text-amber-600 tracking-widest">{s.pin}</span>
+                      <span className="text-sm font-mono font-black text-amber-600 tracking-widest">{s.pin || '----'}</span>
                     </div>
                   ))}
                 </div>
@@ -779,22 +802,22 @@ export default function TeacherDashboard({
                   {selectedSubmissions.length > 0 ? (
                     <div className="space-y-2">
                       <h5 className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Lịch sử luyện tập</h5>
-                      {selectedSubmissions.map((sub: any, idx: number) => (
-                        <div key={idx} className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-100 flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-xs font-bold text-neutral-800">{sub.topic}</p>
-                            <p className="text-[10px] text-neutral-400">{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</p>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            {sub.gradeBefore && (
-                              <span className="text-[10px] font-bold text-neutral-500">V1: {sub.gradeBefore.score}đ</span>
+                      {selectedSubmissions.map((sub, idx) => {
+                        const rated = isRated(sub);
+                        return (
+                          <div key={idx} className="p-3 bg-neutral-50/70 rounded-xl border border-neutral-100 flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-neutral-800">{sub.topic}</p>
+                              <p className="text-[10px] text-neutral-400">{new Date(sub.createdAt).toLocaleDateString('vi-VN')}</p>
+                            </div>
+                            {rated ? (
+                              <span className="text-[10px] font-bold text-emerald-600">{scoreOf(sub)}/{maxScoreOf(sub)}đ</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-neutral-400">Chưa chấm</span>
                             )}
-                            {sub.gradeAfter && (
-                              <span className="text-[10px] font-bold text-emerald-600">V2: {sub.gradeAfter.score}đ</span>
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-neutral-400">
@@ -1163,9 +1186,7 @@ export default function TeacherDashboard({
                   <tbody className="divide-y divide-neutral-100">
                     {[
                       { id: 'syllabus', label: '📚 Thư viện dạng bài', desc: 'Thư viện lý thuyết, đề gợi ý và các quy tắc viết văn AI' },
-                      { id: 'helper', label: '💡 Dàn ý thông minh AI', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
-                      { id: 'game', label: '🎮 Trò chơi sắp đặt', desc: 'Trò chơi kéo thả sắp xếp bố cục câu chuyện' },
-                      { id: 'detective', label: '🕵️ Thám tử bắt lỗi', desc: 'Trò chơi tìm lỗi văn bản và đối chiếu kết quả' },
+                      { id: 'helper', label: '💡 Dàn ý thông minh', desc: 'Không gian phác thảo dàn ý và chấm điểm/so sánh bằng AI' },
                       { id: 'portfolio', label: '🏆 Portfolio Tiến Bộ', desc: 'Hồ sơ năng lực học tập và bài viết mẫu đã lưu' },
                     ].map((tabItem) => {
                       const perm = tabPermissions[tabItem.id] || { student: true, guest: true };

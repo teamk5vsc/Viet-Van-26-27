@@ -54,6 +54,7 @@ export interface GradeResult {
     nextSteps: string;
   };
   checklist: ChecklistItem[]; // specific to the essay type
+  isSimulated?: boolean; // true when this grade came from the offline/mock engine, not real AI
 }
 
 export interface GrowthComparison {
@@ -67,6 +68,7 @@ export interface GrowthComparison {
     reminders: string;   // Working targets remaining
     growthWords: string; // A message summarizing growth of style (Before vs After)
   };
+  isSimulated?: boolean; // true when this comparison came from the offline/mock engine, not real AI
 }
 
 export interface SampleHighlight {
@@ -81,6 +83,20 @@ export interface SampleEssayResult {
   highlights: SampleHighlight[];
   analysis: string[];
   isSimulated?: boolean; // Indicates if this is a static mock/simulated fallback
+}
+
+export interface RubricItem {
+  name: string; // free text, e.g. "Bố cục" — the teacher names it to fit the essay type
+  max: number; // points this criterion is worth, teacher-defined
+  score: number; // points awarded, 0..max
+}
+
+export interface TeacherReview {
+  score: number; // points awarded, set by the teacher (never AI-generated) — sum of criteriaScores' score
+  maxScore: number; // total points possible for this grading — sum of criteriaScores' max (100 if no criteria were used)
+  criteriaScores?: RubricItem[]; // teacher-defined criteria, free-form to fit whatever essay type this is
+  comment?: string;
+  ratedAt: string;
 }
 
 export interface OutlineSubmission {
@@ -99,7 +115,9 @@ export interface OutlineSubmission {
     q2_reasons: string; // Điều gì giúp bài của em tốt hơn?
     q3_learnings: string; // Lần sau em rút ra lưu ý gì?
   };
+  teacherReview?: TeacherReview;
   sampleEssay?: SampleEssayResult;
+  studentEssay?: string; // The student's own writing, typed directly in the app (no AI)
   createdAt: string;
   updatedAt: string;
   emotionTag?: string; // SEL emotion tag selected by student
@@ -163,7 +181,9 @@ export interface StudentEntry {
   id: string;
   name: string;
   avatar: string;
-  pin: string; // 4-digit PIN for student verification
+  // Only present when fetched by an already-authenticated teacher/student session
+  // (see /api/sync/roster vs /api/sync/class-info) — never trust this being set.
+  pin?: string;
 }
 
 export interface StudentGroup {
